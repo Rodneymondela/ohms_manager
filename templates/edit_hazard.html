@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Edit Hazard{% endblock %}
+
+{% block content %}
+<h2>Edit Hazard</h2>
+<form method="POST">
+    <label>Name:<br><input type="text" name="name" value="{{ hazard.name }}" required></label><br><br>
+    <label>Category:<br><input type="text" name="category" value="{{ hazard.category }}" required></label><br><br>
+    <label>Exposure Limit:<br><input type="text" name="exposure_limit" value="{{ hazard.exposure_limit }}" required></label><br><br>
+    <label>Unit:<br><input type="text" name="unit" value="{{ hazard.unit }}"></label><br><br>
+    <label>Safety Measures:<br><textarea name="safety_measures">{{ hazard.safety_measures }}</textarea></label><br><br>
+    <button type="submit">Update Hazard</button>
+</form>
+{% endblock %}

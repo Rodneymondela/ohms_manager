@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Health Records{% endblock %}
+
+{% block content %}
+<h2>Log Health Record</h2>
+
+<form method="POST">
+    <label>Employee:<br>
+        <select name="employee_id" required>
+            <option value="">-- Select Employee --</option>
+            {% for e in employees %}
+                <option value="{{ e.id }}">{{ e.name }}</option>
+            {% endfor %}
+        </select>
+    </label><br><br>
+
+    <label>Test Type:<br><input type="text" name="test_type" required></label><br><br>
+    <label>Result:<br><input type="text" name="result" required></label><br><br>
+    <label>Details:<br><textarea name="details"></textarea></label><br><br>
+    <label>Test Date:<br><input type="date" name="date" required></label><br><br>
+    <label>Next Test Date:<br><input type="date" name="next_test_date"></label><br><br>
+    <label>Physician:<br><input type="text" name="physician"></label><br><br>
+    <label>Facility:<br><input type="text" name="facility"></label><br><br>
+
+    <button type="submit">Save Record</button>
+</form>
+
+<hr>
+<p>
+    <a href="{{ url_for('export_health_csv') }}">⬇️ Download CSV</a> |
+    <a href="{{ url_for('export_health_pdf') }}">📄 Download PDF</a>
+</p>
+
+<h3>Health Records</h3>
+{% if records %}
+<table>
+    <thead>
+        <tr>
+            <th>Date</th><th>Employee</th><th>Test</th><th>Result</th><th>Next Test</th><th>Physician</th><th>Facility</th><th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for r in records %}
+        <tr>
+            <td>{{ r.date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ r.employee.name }}</td>
+            <td>{{ r.test_type }}</td>
+            <td>{{ r.result }}</td>
+            <td>{{ r.next_test_date.strftime('%Y-%m-%d') if r.next_test_date else '-' }}</td>
+            <td>{{ r.physician or '-' }}</td>
+            <td>{{ r.facility or '-' }}</td>
+            <td>
+                <a href="{{ url_for('edit_health', record_id=r.id) }}">Edit</a> |
+                <a href="{{ url_for('delete_health', record_id=r.id) }}" onclick="return confirm('Delete this record?')">Delete</a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No health records yet.</p>
+{% endif %}
+{% endblock %}
