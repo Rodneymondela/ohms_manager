@@ -1,38 +1,65 @@
 {% extends "base.html" %}
-{% block title %}Hazards{% endblock %}
+{% block title %}Manage Hazards{% endblock %}
 
 {% block content %}
-<h2>Hazards</h2>
+<h2>Add New Hazard</h2>
+
 <form method="POST">
-    <label>Name:<br><input type="text" name="name" required></label><br><br>
-    <label>Category:<br><input type="text" name="category" required></label><br><br>
-    <label>Exposure Limit:<br><input type="text" name="exposure_limit" required></label><br><br>
-    <label>Unit:<br><input type="text" name="unit"></label><br><br>
-    <label>Safety Measures:<br><textarea name="safety_measures"></textarea></label><br><br>
+    <label>Hazard Name:<br>
+        <input type="text" name="name" required>
+    </label><br><br>
+
+    <label>Category:<br>
+        <input type="text" name="category" required>
+    </label><br><br>
+
+    <label>Exposure Limit:<br>
+        <input type="text" name="exposure_limit" required>
+    </label><br><br>
+
+    <label>Unit:<br>
+        <input type="text" name="unit" value="mg/m³">
+    </label><br><br>
+
+    <label>Safety Measures:<br>
+        <textarea name="safety_measures"></textarea>
+    </label><br><br>
+
     <button type="submit">Add Hazard</button>
 </form>
 
 <hr>
-<h3>Hazard List</h3>
+
+<h3>Existing Hazards</h3>
+{% if hazards %}
 <table>
     <thead>
         <tr>
-            <th>Name</th><th>Category</th><th>Limit</th><th>Unit</th><th>Actions</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Exposure Limit</th>
+            <th>Unit</th>
+            <th>Safety Measures</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>
-    {% for h in hazards %}
+        {% for hazard in hazards %}
         <tr>
-            <td>{{ h.name }}</td>
-            <td>{{ h.category }}</td>
-            <td>{{ h.exposure_limit }}</td>
-            <td>{{ h.unit }}</td>
+            <td>{{ hazard.name }}</td>
+            <td>{{ hazard.category }}</td>
+            <td>{{ hazard.exposure_limit }}</td>
+            <td>{{ hazard.unit }}</td>
+            <td>{{ hazard.safety_measures or '-' }}</td>
             <td>
-                <a href="{{ url_for('edit_hazard', hazard_id=h.id) }}">Edit</a> |
-                <a href="{{ url_for('delete_hazard', hazard_id=h.id) }}" onclick="return confirm('Delete?')">Delete</a>
+                <a href="{{ url_for('edit_hazard', hazard_id=hazard.id) }}">Edit</a> |
+                <a href="{{ url_for('delete_hazard', hazard_id=hazard.id) }}" onclick="return confirm('Delete this hazard?')">Delete</a>
             </td>
         </tr>
-    {% endfor %}
+        {% endfor %}
     </tbody>
 </table>
+{% else %}
+<p>No hazards found.</p>
+{% endif %}
 {% endblock %}

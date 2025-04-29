@@ -179,8 +179,36 @@ def delete_employee(emp_id):
 @app.route('/hazards', methods=['GET', 'POST'])
 @login_required
 def manage_hazards():
-    # TEMPORARY placeholder
-    return "Hazards page under construction!"
+    if request.method == 'POST':
+        name = request.form.get('name')
+        category = request.form.get('category')
+        exposure_limit = request.form.get('exposure_limit')
+        unit = request.form.get('unit')
+        safety_measures = request.form.get('safety_measures')
+
+        if not all([name, category, exposure_limit]):
+            flash('Name, Category, and Exposure Limit are required.', 'error')
+        else:
+            try:
+                limit = float(exposure_limit)
+                hazard = Hazard(
+                    name=name,
+                    category=category,
+                    exposure_limit=limit,
+                    unit=unit or 'mg/m³',
+                    safety_measures=safety_measures
+                )
+                db.session.add(hazard)
+                db.session.commit()
+                flash('Hazard added successfully.', 'success')
+            except ValueError:
+                flash('Exposure limit must be a number.', 'error')
+
+        return redirect(url_for('manage_hazards'))
+
+    hazards = Hazard.query.order_by(Hazard.category, Hazard.name).all()
+    return render_template('hazards.html', hazards=hazards)
+
 
 # --- Exposures Management ---
 @app.route('/exposures', methods=['GET', 'POST'])
