@@ -175,211 +175,23 @@ def delete_employee(emp_id):
     flash('Employee deleted.', 'info')
     return redirect(url_for('manage_employees'))
 
-# --- Hazard Management ---
-@app.route('/hazards', methods=['GET', 'POST'])
-@login_required
-def manage_hazards():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        category = request.form.get('category')
-        exposure_limit = request.form.get('exposure_limit')
-        unit = request.form.get('unit')
-        safety_measures = request.form.get('safety_measures')
-
-        if not all([name, category, exposure_limit]):
-            flash('Name, category, and exposure limit are required.', 'error')
-        else:
-            try:
-                hazard = Hazard(name=name, category=category, exposure_limit=float(exposure_limit),
-                                unit=unit or 'mg/m³', safety_measures=safety_measures)
-                db.session.add(hazard)
-                db.session.commit()
-                flash('Hazard added.', 'success')
-            except ValueError:
-                flash('Exposure limit must be a number.', 'error')
-        return redirect(url_for('manage_hazards'))
-
-    hazards = Hazard.query.order_by(Hazard.name).all()
-    return render_template('hazards.html', hazards=hazards)
-
-@app.route('/hazards/edit/<int:hazard_id>', methods=['GET', 'POST'])
-@login_required
-def edit_hazard(hazard_id):
-    hazard = Hazard.query.get_or_404(hazard_id)
-    if request.method == 'POST':
-        hazard.name = request.form.get('name')
-        hazard.category = request.form.get('category')
-        hazard.unit = request.form.get('unit')
-        hazard.safety_measures = request.form.get('safety_measures')
-        try:
-            hazard.exposure_limit = float(request.form.get('exposure_limit'))
-            db.session.commit()
-            flash('Hazard updated.', 'success')
-        except ValueError:
-            flash('Exposure limit must be a number.', 'error')
-        return redirect(url_for('manage_hazards'))
-    return render_template('edit_hazard.html', hazard=hazard)
-
-@app.route('/hazards/delete/<int:hazard_id>')
-@login_required
-def delete_hazard(hazard_id):
-    hazard = Hazard.query.get_or_404(hazard_id)
-    db.session.delete(hazard)
-    db.session.commit()
-    flash('Hazard deleted.', 'info')
-    return redirect(url_for('manage_hazards'))
-
-# --- Exposure Management ---
-@app.route('/exposures', methods=['GET', 'POST'])
-@login_required
-def manage_exposures():
-    employees = Employee.query.order_by(Employee.name).all()
-    hazards = Hazard.query.order_by(Hazard.name).all()
-
-    if request.method == 'POST':
-        try:
-            exposure = Exposure(
-                employee_id=request.form.get('employee_id'),
-                hazard_id=request.form.get('hazard_id'),
-                exposure_level=float(request.form.get('exposure_level')),
-                duration=float(request.form.get('duration')) if request.form.get('duration') else None,
-                location=request.form.get('location'),
-                notes=request.form.get('notes'),
-                recorded_by=current_user.id
-            )
-            db.session.add(exposure)
-            db.session.commit()
-            flash('Exposure recorded.', 'success')
-        except ValueError:
-            flash('Exposure level and duration must be numbers.', 'error')
-        return redirect(url_for('manage_exposures'))
-
-    exposures = Exposure.query.order_by(Exposure.date.desc()).all()
-    return render_template('exposures.html', employees=employees, hazards=hazards, exposures=exposures)
-
-@app.route('/exposures/edit/<int:exposure_id>', methods=['GET', 'POST'])
-@login_required
-def edit_exposure(exposure_id):
-    exposure = Exposure.query.get_or_404(exposure_id)
-    employees = Employee.query.order_by(Employee.name).all()
-    hazards = Hazard.query.order_by(Hazard.name).all()
-
-    if request.method == 'POST':
-        try:
-            exposure.employee_id = request.form.get('employee_id')
-            exposure.hazard_id = request.form.get('hazard_id')
-            exposure.exposure_level = float(request.form.get('exposure_level'))
-            exposure.duration = float(request.form.get('duration')) if request.form.get('duration') else None
-            exposure.location = request.form.get('location')
-            exposure.notes = request.form.get('notes')
-            db.session.commit()
-            flash('Exposure updated.', 'success')
-            return redirect(url_for('manage_exposures'))
-        except ValueError:
-            flash('Exposure level and duration must be numeric.', 'error')
-
-    return render_template('edit_exposure.html', exposure=exposure, employees=employees, hazards=hazards)
-
-@app.route('/exposures/delete/<int:exposure_id>')
-@login_required
-def delete_exposure(exposure_id):
-    exposure = Exposure.query.get_or_404(exposure_id)
-    db.session.delete(exposure)
-    db.session.commit()
-    flash('Exposure deleted.', 'info')
-    return redirect(url_for('manage_exposures'))
-
-# --- Health Management ---
-@app.route('/health', methods=['GET', 'POST'])
-@login_required
-def manage_health():
-    employees = Employee.query.order_by(Employee.name).all()
-
-    if request.method == 'POST':
-        record = HealthRecord(
-            employee_id=request.form.get('employee_id'),
-            test_type=request.form.get('test_type'),
-            result=request.form.get('result'),
-            details=request.form.get('details'),
-            date=datetime.strptime(request.form.get('date'), '%Y-%m-%d'),
-            next_test_date=datetime.strptime(request.form.get('next_test_date'), '%Y-%m-%d') if request.form.get('next_test_date') else None,
-            physician=request.form.get('physician'),
-            facility=request.form.get('facility'),
-            recorded_by=current_user.id
-        )
-        db.session.add(record)
-        db.session.commit()
-        flash('Health record added.', 'success')
-        return redirect(url_for('manage_health'))
-
-    records = HealthRecord.query.order_by(HealthRecord.date.desc()).all()
-    return render_template('health.html', employees=employees, records=records)
-
-@app.route('/health/edit/<int:record_id>', methods=['GET', 'POST'])
-@login_required
-def edit_health(record_id):
-    record = HealthRecord.query.get_or_404(record_id)
-    employees = Employee.query.order_by(Employee.name).all()
-
-    if request.method == 'POST':
-        record.employee_id = request.form.get('employee_id')
-        record.test_type = request.form.get('test_type')
-        record.result = request.form.get('result')
-        record.details = request.form.get('details')
-        record.date = datetime.strptime(request.form.get('date'), '%Y-%m-%d')
-        record.next_test_date = datetime.strptime(request.form.get('next_test_date'), '%Y-%m-%d') if request.form.get('next_test_date') else None
-        record.physician = request.form.get('physician')
-        record.facility = request.form.get('facility')
-        db.session.commit()
-        flash('Health record updated.', 'success')
-        return redirect(url_for('manage_health'))
-
-    return render_template('edit_health.html', record=record, employees=employees)
-
-@app.route('/health/delete/<int:record_id>')
-@login_required
-def delete_health(record_id):
-    record = HealthRecord.query.get_or_404(record_id)
-    db.session.delete(record)
-    db.session.commit()
-    flash('Health record deleted.', 'info')
-    return redirect(url_for('manage_health'))
-
-# --- FINAL: Start app ---
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-      def create_default_admin():
-    if not User.query.filter_by(username='admin').first():
-        admin = User(username='admin', email='admin@example.com')
-        admin.set_password('Admin123')  # Password must be at least 8 chars and contain numbers
-        db.session.add(admin)
-        db.session.commit()
-        print("✅ Default admin user created: username=admin password=Admin123")
-    else:
-        print("⚡ Admin user already exists.")
-
-
-
+# --- Reset Admin Route ---
 @app.route('/reset_admin')
 def reset_admin():
-    existing_admin = User.query.filter_by(username='admin').first()
-    if existing_admin:
-        existing_admin.set_password('Admin123')
+    admin = User.query.filter_by(username='admin').first()
+    if admin:
+        admin.set_password('Admin123')
         db.session.commit()
-        return "✅ Admin password reset to Admin123!"
+        return "✅ Admin password reset to Admin123"
     else:
         new_admin = User(username='admin', email='admin@example.com')
         new_admin.set_password('Admin123')
         db.session.add(new_admin)
         db.session.commit()
-        return "✅ Admin user created with password Admin123!"
+        return "✅ Admin user created with password Admin123"
 
-
+# --- Final Run Section ---
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-        create_default_admin()  # <-- This line creates the admin!
-    app.run(debug=True)
-  
     app.run(debug=True)
