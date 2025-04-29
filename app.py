@@ -279,6 +279,76 @@ def reset_admin():
         db.session.commit()
         return "✅ Admin user created with password Admin123"
 
+@app.route('/exposures/export')
+@login_required
+def export_exposures():
+    exposures = Exposure.query.order_by(Exposure.date.desc()).all()
+
+    def generate():
+        data = [['Date', 'Employee', 'Hazard', 'Level', 'Duration', 'Location', 'Notes']]
+        for x in exposures:
+            data.append([
+                x.date.strftime('%Y-%m-%d'),
+                x.employee.name,
+                x.hazard.name,
+                x.exposure_level,
+                x.duration or '',
+                x.location or '',
+                x.notes or ''
+            ])
+        return '\n'.join([','.join(map(str, row)) for row in data])
+
+    return Response(
+        generate(),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment;filename=exposures.csv'}
+    )
+
+
+@app.route('/exposures/export/pdf')
+@login_required
+def export_exposures_pdf():
+    buffer = BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    y = height - 50
+
+    pdf.setTitle("Exposure Report")
+    pdf.setFont("Helvetica-Bold", 14)
+    pdf.drawString(50, y, "Exposure Report")
+    y -= 30
+
+    pdf.setFont("Helvetica", 10)
+    headers = ['Date', 'Employee', 'Hazard', 'Level', 'Duration', 'Location']
+    for i, h in enumerate(headers):
+        pdf.drawString(50 + i*80, y, h)
+    y -= 20
+
+    exposures = Exposure.query.order_by(Exposure.date.desc()).all()
+    for x in exposures:
+        row = [
+            x.date.strftime('%Y-%m-%d'),
+            x.employee.name,
+            x.hazard.name,
+            str(x.exposure_level),
+            str(x.duration or '-'),
+            x.location or '-'
+        ]
+        for i, item in enumerate(row):
+            pdf.drawString(50 + i*80, y, item)
+        y -= 15
+        if y < 50:
+            pdf.showPage()
+            y = height - 50
+
+    pdf.save()
+    buffer.seek(0)
+    return Response(
+        buffer,
+        mimetype='application/pdf',
+        headers={'Content-Disposition': 'attachment;filename=exposures.pdf'}
+    )
+
 # --- Final Run Section ---
 if __name__ == '__main__':
     with app.app_context():
