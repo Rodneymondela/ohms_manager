@@ -2,7 +2,7 @@
 {% block title %}Exposure Records{% endblock %}
 
 {% block content %}
-<h2>Record Exposure</h2>
+<h2>Record New Exposure</h2>
 
 <form method="POST">
     <label>Employee:<br>
@@ -23,39 +23,58 @@
         </select>
     </label><br><br>
 
-    <label>Exposure Level:<br><input type="text" name="exposure_level" required></label><br><br>
-    <label>Duration (hours):<br><input type="text" name="duration"></label><br><br>
-    <label>Location:<br><input type="text" name="location"></label><br><br>
-    <label>Notes:<br><textarea name="notes"></textarea></label><br><br>
+    <label>Exposure Level:<br>
+        <input type="text" name="exposure_level" required>
+    </label><br><br>
+
+    <label>Duration (hours):<br>
+        <input type="text" name="duration">
+    </label><br><br>
+
+    <label>Location:<br>
+        <input type="text" name="location">
+    </label><br><br>
+
+    <label>Notes:<br>
+        <textarea name="notes"></textarea>
+    </label><br><br>
+
     <button type="submit">Record Exposure</button>
 </form>
 
 <hr>
-<p><a href="{{ url_for('export_exposures') }}">⬇️ Download CSV</a> |
-<a href="{{ url_for('export_exposures_pdf') }}">📄 Download PDF</a></p>
 
 <h3>Exposure History</h3>
 {% if exposures %}
 <table>
     <thead>
-        <tr><th>Date</th><th>Employee</th><th>Hazard</th><th>Level</th><th>Duration</th><th>Location</th><th>Notes</th><th>Actions</th></tr>
+        <tr>
+            <th>Date</th>
+            <th>Employee</th>
+            <th>Hazard</th>
+            <th>Level</th>
+            <th>Duration</th>
+            <th>Location</th>
+            <th>Notes</th>
+            <th>Actions</th>
+        </tr>
     </thead>
     <tbody>
-    {% for x in exposures %}
+        {% for exp in exposures %}
         <tr>
-            <td>{{ x.date.strftime('%Y-%m-%d') }}</td>
-            <td>{{ x.employee.name }}</td>
-            <td>{{ x.hazard.name }}</td>
-            <td>{{ x.exposure_level }}</td>
-            <td>{{ x.duration or '-' }}</td>
-            <td>{{ x.location or '-' }}</td>
-            <td>{{ x.notes or '-' }}</td>
+            <td>{{ exp.date.strftime('%Y-%m-%d') }}</td>
+            <td>{{ exp.employee.name }}</td>
+            <td>{{ exp.hazard.name }}</td>
+            <td>{{ exp.exposure_level }}</td>
+            <td>{{ exp.duration or '-' }}</td>
+            <td>{{ exp.location or '-' }}</td>
+            <td>{{ exp.notes or '-' }}</td>
             <td>
-                <a href="{{ url_for('edit_exposure', exposure_id=x.id) }}">Edit</a> |
-                <a href="{{ url_for('delete_exposure', exposure_id=x.id) }}" onclick="return confirm('Delete?')">Delete</a>
+                <a href="{{ url_for('edit_exposure', exposure_id=exp.id) }}">Edit</a> |
+                <a href="{{ url_for('delete_exposure', exposure_id=exp.id) }}" onclick="return confirm('Are you sure?')">Delete</a>
             </td>
         </tr>
-    {% endfor %}
+        {% endfor %}
     </tbody>
 </table>
 {% else %}
