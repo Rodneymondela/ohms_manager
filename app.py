@@ -359,6 +359,23 @@ if __name__ == '__main__':
     else:
         print("⚡ Admin user already exists.")
 
+
+
+@app.route('/reset_admin')
+def reset_admin():
+    existing_admin = User.query.filter_by(username='admin').first()
+    if existing_admin:
+        existing_admin.set_password('Admin123')
+        db.session.commit()
+        return "✅ Admin password reset to Admin123!"
+    else:
+        new_admin = User(username='admin', email='admin@example.com')
+        new_admin.set_password('Admin123')
+        db.session.add(new_admin)
+        db.session.commit()
+        return "✅ Admin user created with password Admin123!"
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
