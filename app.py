@@ -175,7 +175,68 @@ def delete_employee(emp_id):
     flash('Employee deleted.', 'info')
     return redirect(url_for('manage_employees'))
 
-# --- Reset Admin Route ---
+# --- Hazards Management (ADDED) ---
+@app.route('/hazards', methods=['GET', 'POST'])
+@login_required
+def manage_hazards():
+    # TEMPORARY placeholder
+    return "Hazards page under construction!"
+
+# --- Exposures Management ---
+@app.route('/exposures', methods=['GET', 'POST'])
+@login_required
+def manage_exposures():
+    employees = Employee.query.order_by(Employee.name).all()
+    hazards = Hazard.query.order_by(Hazard.name).all()
+
+    if request.method == 'POST':
+        try:
+            exposure = Exposure(
+                employee_id=request.form.get('employee_id'),
+                hazard_id=request.form.get('hazard_id'),
+                exposure_level=float(request.form.get('exposure_level')),
+                duration=float(request.form.get('duration')) if request.form.get('duration') else None,
+                location=request.form.get('location'),
+                notes=request.form.get('notes'),
+                recorded_by=current_user.id
+            )
+            db.session.add(exposure)
+            db.session.commit()
+            flash('Exposure recorded.', 'success')
+        except ValueError:
+            flash('Exposure level and duration must be numbers.', 'error')
+        return redirect(url_for('manage_exposures'))
+
+    exposures = Exposure.query.order_by(Exposure.date.desc()).all()
+    return render_template('exposures.html', employees=employees, hazards=hazards, exposures=exposures)
+
+# --- Health Management ---
+@app.route('/health', methods=['GET', 'POST'])
+@login_required
+def manage_health():
+    employees = Employee.query.order_by(Employee.name).all()
+
+    if request.method == 'POST':
+        record = HealthRecord(
+            employee_id=request.form.get('employee_id'),
+            test_type=request.form.get('test_type'),
+            result=request.form.get('result'),
+            details=request.form.get('details'),
+            date=datetime.strptime(request.form.get('date'), '%Y-%m-%d'),
+            next_test_date=datetime.strptime(request.form.get('next_test_date'), '%Y-%m-%d') if request.form.get('next_test_date') else None,
+            physician=request.form.get('physician'),
+            facility=request.form.get('facility'),
+            recorded_by=current_user.id
+        )
+        db.session.add(record)
+        db.session.commit()
+        flash('Health record added.', 'success')
+        return redirect(url_for('manage_health'))
+
+    records = HealthRecord.query.order_by(HealthRecord.date.desc()).all()
+    return render_template('health.html', employees=employees, records=records)
+
+# --- Reset Admin Password ---
 @app.route('/reset_admin')
 def reset_admin():
     admin = User.query.filter_by(username='admin').first()
