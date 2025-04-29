@@ -345,14 +345,24 @@ def delete_health(record_id):
     flash('Health record deleted.', 'info')
     return redirect(url_for('manage_health'))
 
-@app.route('/init_db')
-def init_db():
+# --- FINAL: Start app ---
+if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    return "Database initialized!"
-
+      def create_default_admin():
+    if not User.query.filter_by(username='admin').first():
+        admin = User(username='admin', email='admin@example.com')
+        admin.set_password('Admin123')  # Password must be at least 8 chars and contain numbers
+        db.session.add(admin)
+        db.session.commit()
+        print("✅ Default admin user created: username=admin password=Admin123")
+    else:
+        print("⚡ Admin user already exists.")
 
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
+        create_default_admin()  # <-- This line creates the admin!
+    app.run(debug=True)
+  
     app.run(debug=True)
