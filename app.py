@@ -344,6 +344,16 @@ def delete_health(record_id):
     db.session.commit()
     flash('Health record deleted.', 'info')
     return redirect(url_for('manage_health'))
+@app.route('/init_db')
+def init_db():
+    db.create_all()
+    return 'Database initialized!'
+# Temporary route to initialize database manually
+@app.route('/init_db')
+def init_db():
+    with app.app_context():
+        db.create_all()
+    return "Database initialized successfully!"
 
 # --- Run ---
 if __name__ == '__main__':
