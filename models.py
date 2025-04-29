@@ -3,10 +3,9 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from flask_bcrypt import Bcrypt
 from sqlalchemy import Index
-from sqlalchemy.orm import validates
+from sqlalchemy.orm import validates, relationship
 import re
 
-# Initialize extensions
 db = SQLAlchemy()
 bcrypt = Bcrypt()
 
@@ -26,7 +25,6 @@ class User(db.Model, UserMixin):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
 
-    # Password reset fields
     reset_token = db.Column(db.String(100), unique=True, nullable=True)
     reset_token_expires = db.Column(db.DateTime, nullable=True)
 
@@ -68,8 +66,8 @@ class Employee(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    exposures = db.relationship('Exposure', backref='employee', lazy=True, cascade='all, delete-orphan')
-    health_records = db.relationship('HealthRecord', backref='employee', lazy=True, cascade='all, delete-orphan')
+    exposures = relationship('Exposure', backref='employee', lazy=True, cascade='all, delete-orphan')
+    health_records = relationship('HealthRecord', backref='employee', lazy=True, cascade='all, delete-orphan')
 
     @validates('contact_number', 'emergency_phone')
     def validate_phone(self, key, phone):
@@ -97,7 +95,7 @@ class Hazard(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    exposures = db.relationship('Exposure', backref='hazard', lazy=True, cascade='all, delete-orphan')
+    exposures = relationship('Exposure', backref='hazard', lazy=True, cascade='all, delete-orphan')
 
     @validates('exposure_limit')
     def validate_exposure_limit(self, key, limit):
@@ -120,14 +118,16 @@ class Exposure(db.Model):
     employee_id = db.Column(db.Integer, db.ForeignKey('employees.id', ondelete='CASCADE'), nullable=False)
     hazard_id = db.Column(db.Integer, db.ForeignKey('hazards.id', ondelete='CASCADE'), nullable=False)
     exposure_level = db.Column(db.Float, nullable=False)
-    duration = db.Column(db.Float)  # Duration in hours
+    duration = db.Column(db.Float)
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     location = db.Column(db.String(100))
     notes = db.Column(db.Text)
     recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    recorder = db.relationship('User', foreign_keys=[recorded_by])
+    employee = relationship('Employee', backref=db.backref('exposures', lazy=True))
+    hazard = relationship('Hazard', backref=db.backref('exposures', lazy=True))
+    recorder = relationship('User', foreign_keys=[recorded_by])
 
     @validates('exposure_level')
     def validate_exposure_level(self, key, level):
@@ -158,8 +158,8 @@ class HealthRecord(db.Model):
     recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    recorder = db.relationship('User', foreign_keys=[recorded_by])
+    employee = relationship('Employee', backref=db.backref('health_records', lazy=True))
+    recorder = relationship('User', foreign_keys=[recorded_by])
 
     def __repr__(self):
         return f'<HealthRecord {self.id}>'
-

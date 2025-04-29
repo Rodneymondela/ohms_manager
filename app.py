@@ -228,6 +228,16 @@ def edit_hazard(hazard_id):
 
     return render_template('edit_hazard.html', hazard=hazard)
 
+@app.route('/hazards/delete/<int:hazard_id>')
+@login_required
+def delete_hazard(hazard_id):
+    hazard = Hazard.query.get_or_404(hazard_id)
+    db.session.delete(hazard)
+    db.session.commit()
+    flash('Hazard deleted successfully.', 'info')
+    return redirect(url_for('manage_hazards'))
+
+
 
 # --- Exposures Management ---
 @app.route('/exposures', methods=['GET', 'POST'])

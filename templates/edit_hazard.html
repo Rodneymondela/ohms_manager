@@ -5,7 +5,7 @@
 <h2>Edit Hazard</h2>
 
 <form method="POST">
-    <label>Hazard Name:<br>
+    <label>Name:<br>
         <input type="text" name="name" value="{{ hazard.name }}" required>
     </label><br><br>
 
@@ -14,7 +14,7 @@
     </label><br><br>
 
     <label>Exposure Limit:<br>
-        <input type="text" name="exposure_limit" value="{{ hazard.exposure_limit }}" required>
+        <input type="number" name="exposure_limit" step="0.01" value="{{ hazard.exposure_limit }}" required>
     </label><br><br>
 
     <label>Unit:<br>
@@ -26,7 +26,6 @@
     </label><br><br>
 
     <button type="submit">Update Hazard</button>
+    <a href="{{ url_for('manage_hazards') }}">Cancel</a>
 </form>
-
-<p><a href="{{ url_for('manage_hazards') }}">⬅️ Back to Hazard List</a></p>
 {% endblock %}
