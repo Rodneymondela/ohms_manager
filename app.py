@@ -209,6 +209,25 @@ def manage_hazards():
     hazards = Hazard.query.order_by(Hazard.category, Hazard.name).all()
     return render_template('hazards.html', hazards=hazards)
 
+@app.route('/hazards/edit/<int:hazard_id>', methods=['GET', 'POST'])
+@login_required
+def edit_hazard(hazard_id):
+    hazard = Hazard.query.get_or_404(hazard_id)
+    if request.method == 'POST':
+        hazard.name = request.form.get('name')
+        hazard.category = request.form.get('category')
+        hazard.unit = request.form.get('unit')
+        hazard.safety_measures = request.form.get('safety_measures')
+        try:
+            hazard.exposure_limit = float(request.form.get('exposure_limit'))
+            db.session.commit()
+            flash('Hazard updated successfully.', 'success')
+        except ValueError:
+            flash('Exposure limit must be a number.', 'error')
+        return redirect(url_for('manage_hazards'))
+
+    return render_template('edit_hazard.html', hazard=hazard)
+
 
 # --- Exposures Management ---
 @app.route('/exposures', methods=['GET', 'POST'])
