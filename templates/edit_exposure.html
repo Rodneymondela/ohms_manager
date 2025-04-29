@@ -2,7 +2,7 @@
 {% block title %}Edit Exposure{% endblock %}
 
 {% block content %}
-<h2>Edit Exposure Record</h2>
+<h2>Edit Exposure</h2>
 
 <form method="POST">
     <label>Employee:<br>
@@ -21,11 +21,24 @@
         </select>
     </label><br><br>
 
-    <label>Exposure Level:<br><input type="text" name="exposure_level" value="{{ exposure.exposure_level }}" required></label><br><br>
-    <label>Duration (hours):<br><input type="text" name="duration" value="{{ exposure.duration }}"></label><br><br>
-    <label>Location:<br><input type="text" name="location" value="{{ exposure.location }}"></label><br><br>
-    <label>Notes:<br><textarea name="notes">{{ exposure.notes }}</textarea></label><br><br>
+    <label>Exposure Level:<br>
+        <input type="text" name="exposure_level" value="{{ exposure.exposure_level }}" required>
+    </label><br><br>
+
+    <label>Duration (hours):<br>
+        <input type="text" name="duration" value="{{ exposure.duration }}">
+    </label><br><br>
+
+    <label>Location:<br>
+        <input type="text" name="location" value="{{ exposure.location }}">
+    </label><br><br>
+
+    <label>Notes:<br>
+        <textarea name="notes">{{ exposure.notes }}</textarea>
+    </label><br><br>
 
     <button type="submit">Update Exposure</button>
 </form>
+
+<p><a href="{{ url_for('manage_exposures') }}">⬅️ Back to Exposures</a></p>
 {% endblock %}
