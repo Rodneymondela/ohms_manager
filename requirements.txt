@@ -1,6 +1,6 @@
-Flask
-Flask-Login
-Flask-SQLAlchemy
-flask-bcrypt
-reportlab
-gunicorn
+Flask==3.1.1
+Flask-Login==0.6.3
+Flask-SQLAlchemy==3.1.1
+flask-bcrypt==1.0.1
+reportlab==4.4.1
+gunicorn==23.0.0

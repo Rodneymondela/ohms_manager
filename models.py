@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import UserMixin
 from flask_bcrypt import Bcrypt
@@ -33,6 +33,10 @@ class User(db.Model, UserMixin):
             raise ValueError("Password must be at least 8 characters long")
         if not any(char.isdigit() for char in password):
             raise ValueError("Password must contain at least one number")
+        if not any(char.islower() for char in password):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(char.isupper() for char in password):
+            raise ValueError("Password must contain at least one uppercase letter")
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
     def check_password(self, password):
@@ -66,14 +70,59 @@ class Employee(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    exposures = relationship('Exposure', backref='employee', lazy=True, cascade='all, delete-orphan')
-    health_records = relationship('HealthRecord', backref='employee', lazy=True, cascade='all, delete-orphan')
+    # The 'exposures' attribute on Employee is created by backref from Exposure.employee
+    # The 'health_records' attribute on Employee is created by backref from HealthRecord.employee
+
+    @validates('name')
+    def validate_name(self, key, name):
+        if not name:
+            raise ValueError("Name cannot be empty.")
+        if len(name) > 100:
+            raise ValueError("Name must be less than 100 characters.")
+        return name
+
+    @validates('job_title')
+    def validate_job_title(self, key, job_title):
+        if not job_title:
+            raise ValueError("Job title cannot be empty.")
+        if len(job_title) > 100:
+            raise ValueError("Job title must be less than 100 characters.")
+        return job_title
+
+    @validates('department')
+    def validate_department(self, key, department):
+        if not department:
+            raise ValueError("Department cannot be empty.")
+        if len(department) > 100:
+            raise ValueError("Department must be less than 100 characters.")
+        return department
+
+    @validates('date_of_birth')
+    def validate_date_of_birth(self, key, date_of_birth):
+        if date_of_birth:
+            if date_of_birth > date.today():
+                raise ValueError("Date of birth cannot be in the future.")
+            if date_of_birth > (date.today() - timedelta(days=18*365.25)): # Approximation for 18 years
+                raise ValueError("Employee must be at least 18 years old.")
+        return date_of_birth
+
+    @validates('hire_date')
+    def validate_hire_date(self, key, hire_date):
+        if hire_date and hire_date > date.today():
+            raise ValueError("Hire date cannot be in the future.")
+        return hire_date
 
     @validates('contact_number', 'emergency_phone')
     def validate_phone(self, key, phone):
         if phone and not re.match(r'^[\d\s\-+()]{7,20}$', phone):
             raise ValueError("Invalid phone number format")
         return phone
+
+    @validates('emergency_contact')
+    def validate_emergency_contact(self, key, emergency_contact):
+        if emergency_contact and len(emergency_contact) > 100:
+            raise ValueError("Emergency contact name must be less than 100 characters.")
+        return emergency_contact
 
     def __repr__(self):
         return f'<Employee {self.name}>'
@@ -95,7 +144,7 @@ class Hazard(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    exposures = relationship('Exposure', backref='hazard', lazy=True, cascade='all, delete-orphan')
+    # The 'exposures' attribute on Hazard is created by backref from Exposure.hazard
 
     @validates('exposure_limit')
     def validate_exposure_limit(self, key, limit):
