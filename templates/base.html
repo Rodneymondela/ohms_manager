@@ -15,9 +15,6 @@
 </head>
 <body>
     <nav>
-        {% if current_user.is_authenticated %}
-            <span>Welcome, {{ current_user.username }}</span>
-        {% endif %}
         {% for label, endpoint in nav_links %}
             <a href="{{ url_for(endpoint) }}">{{ label }}</a>
         {% endfor %}
