@@ -1,9 +1,10 @@
 import unittest
 from datetime import date
+from flask import url_for # For checking redirects more robustly
 from tests.test_config import BasicTests
-from app import db, app # Import db and app
-from models import User, Employee
-# from forms import EmployeeForm # Not strictly needed if testing through routes, but good for reference
+from app import db # Import db from app package
+from app.models import User, Employee
+# from app.forms import EmployeeForm # Not strictly needed if testing through routes
 
 class TestEmployeeCRUD(BasicTests):
 
@@ -16,34 +17,39 @@ class TestEmployeeCRUD(BasicTests):
         db.session.commit()
 
     def _login_test_user(self):
-        return self.app.post('/login', data=dict(
+        # URLs for login are now under /auth blueprint
+        return self.client.post(url_for('auth.login'), data=dict(
             username='testuser',
             password='TestPass123!'
         ), follow_redirects=True)
 
     def test_access_control_unauthenticated(self):
-        endpoints = [
-            '/employees',
-            '/employee/add',
-            '/employee/1/edit', # Assumes an employee with ID 1 might exist or route structure
-            # '/employee/1/delete' # This is POST only, harder to check redirect without POSTing
-        ]
-        for endpoint in endpoints:
-            response = self.app.get(endpoint, follow_redirects=False)
-            self.assertEqual(response.status_code, 302, f"Endpoint {endpoint} did not redirect.")
-            self.assertTrue(response.location.endswith('/login'), f"Endpoint {endpoint} did not redirect to login.")
+        # Log out the setup user first
+        with self.client as c: # Use client to maintain session for logout
+             c.get(url_for('auth.logout'), follow_redirects=True)
 
-        # Test POST separately for delete if needed, or rely on @login_required
-        # For now, GET access is a good indicator.
-        # Example for a POST route:
-        response_post_delete = self.app.post('/employee/1/delete', follow_redirects=False)
+        endpoints_get = [
+            url_for('employees.list_employees'),
+            url_for('employees.add_employee'),
+            url_for('employees.edit_employee', employee_id=1), # Assumes an employee with ID 1
+        ]
+        for endpoint in endpoints_get:
+            response = self.client.get(endpoint, follow_redirects=False)
+            self.assertEqual(response.status_code, 302, f"Endpoint {endpoint} did not redirect.")
+            self.assertTrue(response.location.endswith(url_for('auth.login')), f"Endpoint {endpoint} did not redirect to login.")
+
+        # Test POST separately for delete
+        response_post_delete = self.client.post(url_for('employees.delete_employee', employee_id=1), follow_redirects=False)
         self.assertEqual(response_post_delete.status_code, 302)
-        self.assertTrue(response_post_delete.location.endswith('/login'))
+        self.assertTrue(response_post_delete.location.endswith(url_for('auth.login')))
+
+        # Log back in the test_user for subsequent tests if they don't log in themselves
+        self._login_test_user()
 
 
     def test_list_employees(self):
-        self._login_test_user()
-        response = self.app.get('/employees')
+        # self._login_test_user() # User is logged in via setUp or previous test's re-login
+        response = self.client.get(url_for('employees.list_employees'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Manage Employees', response.data)
         self.assertIn(b'No employees found.', response.data) # Initially empty
@@ -53,19 +59,19 @@ class TestEmployeeCRUD(BasicTests):
         db.session.add(emp)
         db.session.commit()
 
-        response = self.app.get('/employees')
+        response = self.client.get(url_for('employees.list_employees'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'John Doe', response.data)
         self.assertNotIn(b'No employees found.', response.data)
 
     def test_add_employee_get(self):
-        self._login_test_user()
-        response = self.app.get('/employee/add')
+        # self._login_test_user()
+        response = self.client.get(url_for('employees.add_employee'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Add Employee', response.data)
 
     def test_add_employee_post_success(self):
-        self._login_test_user()
+        # self._login_test_user()
         employee_data = {
             'name': 'Jane Smith',
             'job_title': 'Developer',
@@ -76,13 +82,13 @@ class TestEmployeeCRUD(BasicTests):
             'emergency_contact': 'Emergency Jane',
             'emergency_phone': '0987654321'
         }
-        response = self.app.post('/employee/add', data=employee_data, follow_redirects=False)
+        response = self.client.post(url_for('employees.add_employee'), data=employee_data, follow_redirects=False)
 
         self.assertEqual(response.status_code, 302, "Form submission did not redirect.")
-        self.assertTrue(response.location.endswith('/employees'), f"Redirected to {response.location} instead of /employees")
+        self.assertTrue(response.location.endswith(url_for('employees.list_employees')), f"Redirected to {response.location} instead of employees list")
 
         # Check flash message after redirect
-        redirect_response = self.app.get(response.location, follow_redirects=True)
+        redirect_response = self.client.get(response.location, follow_redirects=True)
         self.assertIn(b'Employee added successfully.', redirect_response.data)
 
         # Verify employee in DB
@@ -92,8 +98,8 @@ class TestEmployeeCRUD(BasicTests):
         self.assertEqual(employee.hire_date, date(2023,3,15)) # Compare with date object
 
     def test_add_employee_post_validation_error(self):
-        self._login_test_user()
-        response = self.app.post('/employee/add', data={
+        # self._login_test_user()
+        response = self.client.post(url_for('employees.add_employee'), data={
             'name': '', # Name is required
             'job_title': 'Tester',
             'department': 'QA'
@@ -110,8 +116,8 @@ class TestEmployeeCRUD(BasicTests):
     # If app.py's add_employee route flashes a specific error for model's ValueError, we could test that.
     # Example:
     # def test_add_employee_post_model_validation_error(self):
-    #     self._login_test_user()
-    #     response = self.app.post('/employee/add', data={
+    #     # self._login_test_user()
+    #     response = self.client.post(url_for('employees.add_employee'), data={
     #         'name': 'Model Test', 'job_title': 'Model Job', 'department': 'Model Dept',
     #         'contact_number': 'Invalid Phone Format That Is Too Long For Column Or Fails Regex'
     #     }, follow_redirects=True)
@@ -119,14 +125,14 @@ class TestEmployeeCRUD(BasicTests):
     #     self.assertIn(b'Error adding employee: Invalid phone number format', response.data) # Assuming this flash message
 
     def test_edit_employee_get_and_post_success(self):
-        self._login_test_user()
+        # self._login_test_user()
         emp = Employee(name='Edit Me', job_title='Old Title', department='Old Dept', hire_date=date(2022,1,1))
         db.session.add(emp)
         db.session.commit()
         employee_id = emp.id
 
         # GET request
-        response_get = self.app.get(f'/employee/{employee_id}/edit')
+        response_get = self.client.get(url_for('employees.edit_employee', employee_id=employee_id))
         self.assertEqual(response_get.status_code, 200)
         self.assertIn(b'Edit Employee', response_get.data)
         self.assertIn(b'Edit Me', response_get.data) # Check if current name is in form
@@ -142,12 +148,12 @@ class TestEmployeeCRUD(BasicTests):
             'emergency_contact': emp.emergency_contact or '',
             'emergency_phone': emp.emergency_phone or ''
         }
-        response_post = self.app.post(f'/employee/{employee_id}/edit', data=updated_data, follow_redirects=False)
+        response_post = self.client.post(url_for('employees.edit_employee', employee_id=employee_id), data=updated_data, follow_redirects=False)
         self.assertEqual(response_post.status_code, 302)
-        self.assertTrue(response_post.location.endswith('/employees'))
+        self.assertTrue(response_post.location.endswith(url_for('employees.list_employees')))
 
         # Check flash message
-        redirect_response = self.app.get(response_post.location)
+        redirect_response = self.client.get(response_post.location)
         self.assertIn(b'Employee updated successfully.', redirect_response.data)
 
         # Verify update in DB
@@ -156,27 +162,27 @@ class TestEmployeeCRUD(BasicTests):
         self.assertEqual(updated_emp.job_title, 'New Title')
 
     def test_edit_employee_non_existent(self):
-        self._login_test_user()
-        response_get = self.app.get('/employee/9999/edit') # Non-existent ID
+        # self._login_test_user()
+        response_get = self.client.get(url_for('employees.edit_employee', employee_id=9999)) # Non-existent ID
         self.assertEqual(response_get.status_code, 404)
 
-        response_post = self.app.post('/employee/9999/edit', data={'name': 'TryingToEdit'})
+        response_post = self.client.post(url_for('employees.edit_employee', employee_id=9999), data={'name': 'TryingToEdit'})
         self.assertEqual(response_post.status_code, 404)
 
 
     def test_delete_employee_success(self):
-        self._login_test_user()
+        # self._login_test_user()
         emp = Employee(name='Delete Me', job_title='Deleter', department='HR', hire_date=date(2021,1,1))
         db.session.add(emp)
         db.session.commit()
         employee_id = emp.id
 
-        response = self.app.post(f'/employee/{employee_id}/delete', follow_redirects=False)
+        response = self.client.post(url_for('employees.delete_employee', employee_id=employee_id), follow_redirects=False)
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/employees'))
+        self.assertTrue(response.location.endswith(url_for('employees.list_employees')))
 
         # Check flash message
-        redirect_response = self.app.get(response.location)
+        redirect_response = self.client.get(response.location)
         self.assertIn(b'Employee deleted successfully.', redirect_response.data)
 
         # Verify deletion from DB
@@ -184,8 +190,8 @@ class TestEmployeeCRUD(BasicTests):
         self.assertIsNone(deleted_emp)
 
     def test_delete_employee_non_existent(self):
-        self._login_test_user()
-        response = self.app.post('/employee/9999/delete') # Non-existent ID
+        # self._login_test_user()
+        response = self.client.post(url_for('employees.delete_employee', employee_id=9999)) # Non-existent ID
         self.assertEqual(response.status_code, 404)
 
 

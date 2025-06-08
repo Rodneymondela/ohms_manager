@@ -1,8 +1,9 @@
 import unittest
-from datetime import date, datetime
+from datetime import date, datetime # datetime not used directly, but good for context
+from flask import url_for # For checking redirects more robustly
 from tests.test_config import BasicTests
-from app import db, app # Import db and app
-from models import User, Employee, HealthRecord # Added HealthRecord
+from app import db # Import db from app package
+from app.models import User, Employee, HealthRecord # Models from app package
 
 class TestHealthRecordCRUD(BasicTests):
 
@@ -24,32 +25,34 @@ class TestHealthRecordCRUD(BasicTests):
         self._login_test_user()
 
     def _login_test_user(self):
-        return self.app.post('/login', data=dict(
+        return self.client.post(url_for('auth.login'), data=dict(
             username='testuser',
             password='TestPass123!'
         ), follow_redirects=True)
 
     def test_health_record_access_control_unauthenticated(self):
         # Log out the setup user first
-        with self.app as client:
-            client.get('/logout', follow_redirects=True)
+        with self.client as c:
+            c.get(url_for('auth.logout'), follow_redirects=True)
 
-        endpoints = [
-            '/health_records',
-            '/health_record/add',
-            '/health_record/1/edit',
+        endpoints_get = [
+            url_for('health_records.list_health_records'),
+            url_for('health_records.add_health_record'),
+            url_for('health_records.edit_health_record', record_id=1),
         ]
-        for endpoint in endpoints:
-            response = self.app.get(endpoint, follow_redirects=False)
+        for endpoint in endpoints_get:
+            response = self.client.get(endpoint, follow_redirects=False)
             self.assertEqual(response.status_code, 302)
-            self.assertTrue(response.location.endswith('/login'))
+            self.assertTrue(response.location.endswith(url_for('auth.login')))
 
-        response_post_delete = self.app.post('/health_record/1/delete', follow_redirects=False)
+        response_post_delete = self.client.post(url_for('health_records.delete_health_record', record_id=1), follow_redirects=False)
         self.assertEqual(response_post_delete.status_code, 302)
-        self.assertTrue(response_post_delete.location.endswith('/login'))
+        self.assertTrue(response_post_delete.location.endswith(url_for('auth.login')))
+
+        self._login_test_user() # Re-login
 
     def test_list_health_records(self):
-        response = self.app.get('/health_records')
+        response = self.client.get(url_for('health_records.list_health_records'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Manage Health Records', response.data)
         self.assertIn(b'No health records found.', response.data)
@@ -64,14 +67,14 @@ class TestHealthRecordCRUD(BasicTests):
         db.session.add(record)
         db.session.commit()
 
-        response = self.app.get('/health_records')
+        response = self.client.get(url_for('health_records.list_health_records'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(self.employee1.name.encode(), response.data)
         self.assertIn(b'Hearing Test', response.data)
         self.assertNotIn(b'No health records found.', response.data)
 
     def test_add_health_record_get(self):
-        response = self.app.get('/health_record/add')
+        response = self.client.get(url_for('health_records.add_health_record'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Add Health Record', response.data)
         self.assertIn(self.employee1.name.encode(), response.data) # Check if employee name is in choices
@@ -87,12 +90,12 @@ class TestHealthRecordCRUD(BasicTests):
             'physician': 'Dr. Eyes',
             'facility': 'Optical Clinic'
         }
-        response = self.app.post('/health_record/add', data=record_data, follow_redirects=False)
+        response = self.client.post(url_for('health_records.add_health_record'), data=record_data, follow_redirects=False)
 
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/health_records'))
+        self.assertTrue(response.location.endswith(url_for('health_records.list_health_records')))
 
-        redirect_response = self.app.get(response.location)
+        redirect_response = self.client.get(response.location)
         self.assertIn(b'Health record added successfully.', redirect_response.data)
 
         record = HealthRecord.query.filter_by(test_type='Vision Test').first()
@@ -105,13 +108,13 @@ class TestHealthRecordCRUD(BasicTests):
 
     def test_add_health_record_post_validation_error(self):
         # Missing employee
-        response = self.app.post('/health_record/add', data={'test_type': 'Blood Test', 'result': 'OK', 'date': '2023-07-01'}, follow_redirects=True)
+        response = self.client.post(url_for('health_records.add_health_record'), data={'test_type': 'Blood Test', 'result': 'OK', 'date': '2023-07-01'}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Employee</label>', response.data)
         self.assertIn(b'This field is required.', response.data)
 
         # Missing test_type
-        response = self.app.post('/health_record/add', data={'employee': self.employee1.id, 'result': 'OK', 'date': '2023-07-01'}, follow_redirects=True)
+        response = self.client.post(url_for('health_records.add_health_record'), data={'employee': self.employee1.id, 'result': 'OK', 'date': '2023-07-01'}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Test Type</label>', response.data)
         self.assertIn(b'This field is required.', response.data)
@@ -127,7 +130,7 @@ class TestHealthRecordCRUD(BasicTests):
         db.session.commit()
         record_id = record.id
 
-        response_get = self.app.get(f'/health_record/{record_id}/edit')
+        response_get = self.client.get(url_for('health_records.edit_health_record', record_id=record_id))
         self.assertEqual(response_get.status_code, 200)
         self.assertIn(b'Edit Health Record', response_get.data)
         self.assertIn(self.employee1.name.encode(), response_get.data)
@@ -143,11 +146,11 @@ class TestHealthRecordCRUD(BasicTests):
             'physician': 'Dr. Shoulder',
             'facility': 'Community Clinic'
         }
-        response_post = self.app.post(f'/health_record/{record_id}/edit', data=updated_data, follow_redirects=False)
+        response_post = self.client.post(url_for('health_records.edit_health_record', record_id=record_id), data=updated_data, follow_redirects=False)
         self.assertEqual(response_post.status_code, 302, f"POST request failed with data: {response_post.data.decode()}")
-        self.assertTrue(response_post.location.endswith('/health_records'))
+        self.assertTrue(response_post.location.endswith(url_for('health_records.list_health_records')))
 
-        redirect_response = self.app.get(response_post.location)
+        redirect_response = self.client.get(response_post.location)
         self.assertIn(b'Health record updated successfully.', redirect_response.data)
 
         updated_rec = HealthRecord.query.get(record_id)
@@ -157,10 +160,10 @@ class TestHealthRecordCRUD(BasicTests):
         self.assertIsNone(updated_rec.next_test_date) # Check if cleared
 
     def test_edit_health_record_non_existent(self):
-        response_get = self.app.get('/health_record/9999/edit')
+        response_get = self.client.get(url_for('health_records.edit_health_record', record_id=9999))
         self.assertEqual(response_get.status_code, 404)
 
-        response_post = self.app.post('/health_record/9999/edit', data={'test_type': 'NonExistent'})
+        response_post = self.client.post(url_for('health_records.edit_health_record', record_id=9999), data={'test_type': 'NonExistent'})
         self.assertEqual(response_post.status_code, 404)
 
     def test_delete_health_record_success(self):
@@ -172,17 +175,17 @@ class TestHealthRecordCRUD(BasicTests):
         db.session.commit()
         record_id = record.id
 
-        response = self.app.post(f'/health_record/{record_id}/delete', follow_redirects=False)
+        response = self.client.post(url_for('health_records.delete_health_record', record_id=record_id), follow_redirects=False)
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/health_records'))
+        self.assertTrue(response.location.endswith(url_for('health_records.list_health_records')))
 
-        redirect_response = self.app.get(response.location)
+        redirect_response = self.client.get(response.location)
         self.assertIn(b'Health record deleted successfully.', redirect_response.data)
 
         self.assertIsNone(HealthRecord.query.get(record_id))
 
     def test_delete_health_record_non_existent(self):
-        response = self.app.post('/health_record/9999/delete')
+        response = self.client.post(url_for('health_records.delete_health_record', record_id=9999))
         self.assertEqual(response.status_code, 404)
 
 if __name__ == '__main__':

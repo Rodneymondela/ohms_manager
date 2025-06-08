@@ -1,24 +1,25 @@
 import unittest
 from flask_login import current_user
 from tests.test_config import BasicTests
-from app import db # Direct import of db from app
-from models import User # User model
+from app import db # Direct import of db (SQLAlchemy()) from app package
+from app.models import User # User model from app package
 from datetime import datetime
 
 class TestAuthRoutes(BasicTests):
 
     def test_get_register_page(self):
-        response = self.app.get('/register', follow_redirects=True)
+        # URLs should now include the blueprint prefix
+        response = self.client.get('/auth/register', follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Register', response.data) # Check for a keyword in the rendered page
 
     def test_get_login_page(self):
-        response = self.app.get('/login', follow_redirects=True)
+        response = self.client.get('/auth/login', follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Login', response.data) # Check for a keyword
 
     def test_successful_registration(self):
-        response = self.app.post('/register', data=dict(
+        response = self.client.post('/auth/register', data=dict(
             username='newuser',
             email='newuser@example.com',
             password='NewUserPass123!',
@@ -40,7 +41,7 @@ class TestAuthRoutes(BasicTests):
         db.session.add(user)
         db.session.commit()
 
-        response = self.app.post('/register', data=dict(
+        response = self.client.post('/auth/register', data=dict(
             username='existinguser', # Same username
             email='newemail@example.com',
             password='NewPass123!',
@@ -57,7 +58,7 @@ class TestAuthRoutes(BasicTests):
         db.session.add(user)
         db.session.commit()
 
-        response = self.app.post('/register', data=dict(
+        response = self.client.post('/auth/register', data=dict(
             username='newusername',
             email='existingemail@example.com', # Same email
             password='NewPass123!',
@@ -68,7 +69,7 @@ class TestAuthRoutes(BasicTests):
         self.assertIn(b'Register', response.data)
 
     def test_registration_password_too_short(self):
-        response = self.app.post('/register', data=dict(
+        response = self.client.post('/auth/register', data=dict(
             username='testuser',
             email='test@example.com',
             password='short',
@@ -80,7 +81,7 @@ class TestAuthRoutes(BasicTests):
         self.assertIn(b'Register', response.data)
 
     def test_registration_password_mismatch(self):
-        response = self.app.post('/register', data=dict(
+        response = self.client.post('/auth/register', data=dict(
             username='testuser',
             email='test@example.com',
             password='ValidPass123!',
@@ -93,7 +94,7 @@ class TestAuthRoutes(BasicTests):
     def test_registration_password_missing_criteria_from_model(self):
         # Test one of the model's specific password rules not covered by basic WTForms length/equalTo
         # For example, missing an uppercase letter
-        response = self.app.post('/register', data=dict(
+        response = self.client.post('/auth/register', data=dict(
             username='testuser',
             email='test@example.com',
             password='validpass123!', # Missing uppercase
@@ -114,22 +115,30 @@ class TestAuthRoutes(BasicTests):
 
         initial_last_login = test_user.last_login # Could be None
 
-        response = self.app.post('/login', data=dict(
+        response = self.client.post('/auth/login', data=dict(
             username='loginuser',
             password='LoginPass123!'
         ), follow_redirects=False) # Important: check redirect before it's followed
 
         self.assertEqual(response.status_code, 302) # Should redirect
-        self.assertTrue(response.location.endswith('/')) # Redirects to index
+        # Assuming main.index is at '/', if not, this check needs to be more specific or use url_for
+        self.assertTrue(response.location.endswith(url_for('main.index')))
 
         # Follow redirect to check current_user status
-        with self.app as client: # Use a new client context to ensure session persistence
-            client.post('/login', data=dict(
+        # The test client (self.client) maintains cookiejar, so session is persisted.
+        # We make another request to a known endpoint to check current_user's state
+        # or check a page that displays user-specific info.
+        with self.client: # Use the test client to maintain session
+            response_after_login = self.client.post('/auth/login', data=dict(
                 username='loginuser',
                 password='LoginPass123!'
-            ), follow_redirects=True) # This time follow for current_user check
+            ), follow_redirects=True)
 
-            self.assertTrue(current_user.is_authenticated)
+            # Now current_user should be set within this client's context if accessing a route
+            # To test current_user directly, it's best to make a request to an endpoint
+            # that exposes this information or relies on it.
+            # For example, accessing the main index page which might show user's name.
+            self.assertTrue(current_user.is_authenticated) # This checks current_user in the test's app context
             self.assertEqual(current_user.username, 'loginuser')
 
         # Verify last_login was updated
@@ -142,7 +151,7 @@ class TestAuthRoutes(BasicTests):
 
 
     def test_login_invalid_username(self):
-        response = self.app.post('/login', data=dict(
+        response = self.client.post('/auth/login', data=dict(
             username='nonexistentuser',
             password='anypassword'
         ), follow_redirects=True)
@@ -157,7 +166,7 @@ class TestAuthRoutes(BasicTests):
         db.session.add(test_user)
         db.session.commit()
 
-        response = self.app.post('/login', data=dict(
+        response = self.client.post('/auth/login', data=dict(
             username='loginuser2',
             password='WrongPassword123!'
         ), follow_redirects=True)
@@ -166,7 +175,7 @@ class TestAuthRoutes(BasicTests):
         self.assertFalse(current_user.is_authenticated)
 
     def test_login_empty_credentials_username(self):
-        response = self.app.post('/login', data=dict(
+        response = self.client.post('/auth/login', data=dict(
             username='',
             password='somepassword'
         ), follow_redirects=True)
@@ -175,7 +184,7 @@ class TestAuthRoutes(BasicTests):
         self.assertFalse(current_user.is_authenticated)
 
     def test_login_empty_credentials_password(self):
-        response = self.app.post('/login', data=dict(
+        response = self.client.post('/auth/login', data=dict(
             username='someuser',
             password=''
         ), follow_redirects=True)
@@ -191,37 +200,33 @@ class TestAuthRoutes(BasicTests):
         db.session.add(logout_user_obj)
         db.session.commit()
 
-        login_response = self.app.post('/login', data=dict(
+        # Log in the user using self.client
+        login_response = self.client.post('/auth/login', data=dict(
             username='logoutuser',
             password='LogoutPass123!'
         ), follow_redirects=True)
-        self.assertEqual(login_response.status_code, 200) # Successfully on index page
-        self.assertIn(b'Home', login_response.data) # Assuming 'Home' is on index for logged-in users
-                                                     # or check for current_user.is_authenticated within a client context
+        self.assertEqual(login_response.status_code, 200)
+        # Check if we are on the main page (e.g., by looking for a unique element of main.index)
+        # For now, we assume it redirects to '/' which is main.index.
+        self.assertTrue(current_user.is_authenticated) # Check after login
 
-        # 2. Perform logout
-        # We need to use a client that maintains session state for logout
-        with self.app as client:
-            # First, ensure user is logged in this client's context
-            client.post('/login', data=dict(username='logoutuser', password='LogoutPass123!'), follow_redirects=True)
-            self.assertTrue(current_user.is_authenticated, "User should be authenticated before logout")
+        # Perform logout
+        logout_response = self.client.get('/auth/logout', follow_redirects=False)
+        self.assertEqual(logout_response.status_code, 302) # Redirects
+        self.assertTrue(logout_response.location.endswith(url_for('auth.login')))
 
-            logout_response = client.get('/logout', follow_redirects=False)
-            self.assertEqual(logout_response.status_code, 302) # Redirects
-            self.assertTrue(logout_response.location.endswith('/login'))
+        # Follow redirect to check page content and current_user status
+        final_page_response = self.client.get(logout_response.location, follow_redirects=True) # Get the login page
+        self.assertEqual(final_page_response.status_code, 200)
+        self.assertIn(b'You have been logged out.', final_page_response.data) # Flash message
+        self.assertIn(b'Login', final_page_response.data) # Should be on login page
 
-            # Follow redirect to check page content and current_user status
-            final_page_response = client.get(logout_response.location, follow_redirects=True) # Get the login page
-            self.assertEqual(final_page_response.status_code, 200)
-            self.assertIn(b'You have been logged out.', final_page_response.data) # Flash message
-            self.assertIn(b'Login', final_page_response.data) # Should be on login page
+        self.assertFalse(current_user.is_authenticated, "User should be anonymous after logout")
 
-            self.assertFalse(current_user.is_authenticated, "User should be anonymous after logout")
-
-            # 3. Try to access a protected page
-            protected_page_response = client.get('/', follow_redirects=False) # Access index
-            self.assertEqual(protected_page_response.status_code, 302) # Should redirect to login
-            self.assertTrue(protected_page_response.location.endswith('/login'))
+        # Try to access a protected page (main.index)
+        protected_page_response = self.client.get(url_for('main.index'), follow_redirects=False)
+        self.assertEqual(protected_page_response.status_code, 302) # Should redirect to login
+        self.assertTrue(protected_page_response.location.endswith(url_for('auth.login')))
 
 
 if __name__ == "__main__":

@@ -3,15 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>{% block title %}OHMS{% endblock %}</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f4f4f4; }
-        nav { background-color: #0056b3; padding: 10px; color: white; margin-bottom: 20px; }
-        nav a { color: white; margin-right: 15px; text-decoration: none; font-weight: bold; }
-        nav span { margin-right: 20px; }
-        .flash { color: red; margin-bottom: 10px; }
-        table { background-color: white; width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; border: 1px solid #ccc; }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <nav>

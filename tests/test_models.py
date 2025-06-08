@@ -1,6 +1,6 @@
 import unittest
-from app import db  # db instance from your main app
-from models import User # User model
+from app import db  # db instance from your main app (SQLAlchemy())
+from app.models import User # User model from app package
 from tests.test_config import BasicTests # Base test class
 
 class TestUserModel(BasicTests):

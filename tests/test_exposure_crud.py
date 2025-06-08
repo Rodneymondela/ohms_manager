@@ -1,8 +1,9 @@
 import unittest
-from datetime import date, datetime
+from datetime import date, datetime # Not used directly, but good for context
+from flask import url_for # For checking redirects more robustly
 from tests.test_config import BasicTests
-from app import db, app # Import db and app
-from models import User, Employee, Hazard, Exposure
+from app import db # Import db from app package
+from app.models import User, Employee, Hazard, Exposure # Models from app package
 
 class TestExposureCRUD(BasicTests):
 
@@ -26,36 +27,35 @@ class TestExposureCRUD(BasicTests):
         self._login_test_user()
 
     def _login_test_user(self):
-        return self.app.post('/login', data=dict(
+        return self.client.post(url_for('auth.login'), data=dict(
             username='testuser',
             password='TestPass123!'
         ), follow_redirects=True)
 
     def test_exposure_access_control_unauthenticated(self):
         # Log out the setup user first
-        with self.app as client: # Use client to maintain session for logout
-            client.get('/logout', follow_redirects=True)
+        with self.client as c:
+            c.get(url_for('auth.logout'), follow_redirects=True)
 
-        endpoints = [
-            '/exposures',
-            '/exposure/add',
-            '/exposure/1/edit',
+        endpoints_get = [
+            url_for('exposures.list_exposures'),
+            url_for('exposures.add_exposure'),
+            url_for('exposures.edit_exposure', exposure_id=1),
         ]
-        for endpoint in endpoints:
-            response = self.app.get(endpoint, follow_redirects=False)
+        for endpoint in endpoints_get:
+            response = self.client.get(endpoint, follow_redirects=False)
             self.assertEqual(response.status_code, 302)
-            self.assertTrue(response.location.endswith('/login'))
+            self.assertTrue(response.location.endswith(url_for('auth.login')))
 
-        response_post_delete = self.app.post('/exposure/1/delete', follow_redirects=False)
+        response_post_delete = self.client.post(url_for('exposures.delete_exposure', exposure_id=1), follow_redirects=False)
         self.assertEqual(response_post_delete.status_code, 302)
-        self.assertTrue(response_post_delete.location.endswith('/login'))
+        self.assertTrue(response.location.endswith(url_for('auth.login')))
 
-        # Log back in for subsequent tests if they rely on setUp's login
-        # self._login_test_user() # Not needed if each test logs in or setUp logs in and isn't logged out
+        self._login_test_user() # Re-login for subsequent tests
 
     def test_list_exposures(self):
         # User is logged in from setUp
-        response = self.app.get('/exposures')
+        response = self.client.get(url_for('exposures.list_exposures'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Manage Exposures', response.data)
         self.assertIn(b'No exposure records found.', response.data)
@@ -70,7 +70,7 @@ class TestExposureCRUD(BasicTests):
         db.session.add(exposure)
         db.session.commit()
 
-        response = self.app.get('/exposures')
+        response = self.client.get(url_for('exposures.list_exposures'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(self.employee1.name.encode(), response.data)
         self.assertIn(self.hazard1.name.encode(), response.data)
@@ -78,7 +78,7 @@ class TestExposureCRUD(BasicTests):
         self.assertNotIn(b'No exposure records found.', response.data)
 
     def test_add_exposure_get(self):
-        response = self.app.get('/exposure/add')
+        response = self.client.get(url_for('exposures.add_exposure'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Add Exposure Record', response.data)
         self.assertIn(self.employee1.name.encode(), response.data) # Check if employee name is in choices
@@ -94,12 +94,12 @@ class TestExposureCRUD(BasicTests):
             'location': 'Factory Floor',
             'notes': 'Routine check'
         }
-        response = self.app.post('/exposure/add', data=exposure_data, follow_redirects=False)
+        response = self.client.post(url_for('exposures.add_exposure'), data=exposure_data, follow_redirects=False)
 
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/exposures'))
+        self.assertTrue(response.location.endswith(url_for('exposures.list_exposures')))
 
-        redirect_response = self.app.get(response.location)
+        redirect_response = self.client.get(response.location)
         self.assertIn(b'Exposure record added successfully.', redirect_response.data)
 
         exposure = Exposure.query.filter_by(location='Factory Floor').first()
@@ -111,13 +111,13 @@ class TestExposureCRUD(BasicTests):
 
     def test_add_exposure_post_validation_error(self):
         # Missing employee
-        response = self.app.post('/exposure/add', data={'hazard': self.hazard1.id, 'exposure_level': '70', 'date': '2023-01-01'}, follow_redirects=True)
+        response = self.client.post(url_for('exposures.add_exposure'), data={'hazard': self.hazard1.id, 'exposure_level': '70', 'date': '2023-01-01'}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Employee</label>', response.data) # Check for field label
         self.assertIn(b'This field is required.', response.data) # Error for employee
 
         # Invalid exposure level
-        response = self.app.post('/exposure/add', data={'employee': self.employee1.id, 'hazard': self.hazard1.id, 'exposure_level': 'abc', 'date': '2023-01-01'}, follow_redirects=True)
+        response = self.client.post(url_for('exposures.add_exposure'), data={'employee': self.employee1.id, 'hazard': self.hazard1.id, 'exposure_level': 'abc', 'date': '2023-01-01'}, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Not a valid float value', response.data)
 
@@ -133,7 +133,7 @@ class TestExposureCRUD(BasicTests):
         db.session.commit()
         exposure_id = exposure.id
 
-        response_get = self.app.get(f'/exposure/{exposure_id}/edit')
+        response_get = self.client.get(url_for('exposures.edit_exposure', exposure_id=exposure_id))
         self.assertEqual(response_get.status_code, 200)
         self.assertIn(b'Edit Exposure Record', response_get.data)
         self.assertIn(self.employee1.name.encode(), response_get.data) # Check pre-selection
@@ -149,11 +149,11 @@ class TestExposureCRUD(BasicTests):
             'location': 'New Location',
             'notes': 'Updated notes'
         }
-        response_post = self.app.post(f'/exposure/{exposure_id}/edit', data=updated_data, follow_redirects=False)
+        response_post = self.client.post(url_for('exposures.edit_exposure', exposure_id=exposure_id), data=updated_data, follow_redirects=False)
         self.assertEqual(response_post.status_code, 302)
-        self.assertTrue(response_post.location.endswith('/exposures'))
+        self.assertTrue(response_post.location.endswith(url_for('exposures.list_exposures')))
 
-        redirect_response = self.app.get(response_post.location)
+        redirect_response = self.client.get(response_post.location)
         self.assertIn(b'Exposure record updated successfully.', redirect_response.data)
 
         updated_exp = Exposure.query.get(exposure_id)
@@ -163,10 +163,10 @@ class TestExposureCRUD(BasicTests):
         self.assertEqual(updated_exp.location, 'New Location')
 
     def test_edit_exposure_non_existent(self):
-        response_get = self.app.get('/exposure/9999/edit')
+        response_get = self.client.get(url_for('exposures.edit_exposure', exposure_id=9999))
         self.assertEqual(response_get.status_code, 404)
 
-        response_post = self.app.post('/exposure/9999/edit', data={'exposure_level': '100'})
+        response_post = self.client.post(url_for('exposures.edit_exposure', exposure_id=9999), data={'exposure_level': '100'})
         self.assertEqual(response_post.status_code, 404)
 
     def test_delete_exposure_success(self):
@@ -178,17 +178,17 @@ class TestExposureCRUD(BasicTests):
         db.session.commit()
         exposure_id = exposure.id
 
-        response = self.app.post(f'/exposure/{exposure_id}/delete', follow_redirects=False)
+        response = self.client.post(url_for('exposures.delete_exposure', exposure_id=exposure_id), follow_redirects=False)
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(response.location.endswith('/exposures'))
+        self.assertTrue(response.location.endswith(url_for('exposures.list_exposures')))
 
-        redirect_response = self.app.get(response.location)
+        redirect_response = self.client.get(response.location)
         self.assertIn(b'Exposure record deleted successfully.', redirect_response.data)
 
         self.assertIsNone(Exposure.query.get(exposure_id))
 
     def test_delete_exposure_non_existent(self):
-        response = self.app.post('/exposure/9999/delete')
+        response = self.client.post(url_for('exposures.delete_exposure', exposure_id=9999))
         self.assertEqual(response.status_code, 404)
 
 if __name__ == '__main__':

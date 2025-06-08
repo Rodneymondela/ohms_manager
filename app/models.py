@@ -1,13 +1,11 @@
 from datetime import datetime
-from flask_sqlalchemy import SQLAlchemy
+# flask_sqlalchemy and flask_bcrypt are initialized in app/__init__.py
 from flask_login import UserMixin
-from flask_bcrypt import Bcrypt
 from sqlalchemy import Index
 from sqlalchemy.orm import validates, relationship
 import re
 
-db = SQLAlchemy()
-bcrypt = Bcrypt()
+from app import db, bcrypt # Import db and bcrypt from the app package
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'

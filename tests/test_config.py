@@ -1,42 +1,35 @@
 import unittest
-from app import app, db, bcrypt, login_manager # Import necessary components from your app
+from app import create_app, db # Import create_app and the globally defined db instance
 
 class BasicTests(unittest.TestCase):
 
     def setUp(self):
-        # Configure the app for testing
-        app.config['TESTING'] = True
-        app.config['WTF_CSRF_ENABLED'] = False  # Disable CSRF for tests
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:' # Use in-memory DB
-        app.config['SECRET_KEY'] = 'test_secret_key'
-        app.config['LOGIN_DISABLED'] = True # Optional: disable login for routes not being tested for auth
+        self.app = create_app() # Create app instance using the factory
 
-        # Create a test client
-        self.app = app.test_client()
+        # Configure the app for testing AFTER it's created by the factory
+        # The factory might set defaults, these are test-specific overrides.
+        self.app.config['TESTING'] = True
+        self.app.config['WTF_CSRF_ENABLED'] = False
+        self.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
+        self.app.config['SECRET_KEY'] = 'test_secret_key_for_testing'
+        # LOGIN_DISABLED can be useful if you want to bypass login for certain tests,
+        # but generally, it's better to test the login flow.
+        # self.app.config['LOGIN_DISABLED'] = True
 
-        # Push an application context
-        self.app_context = app.app_context()
+        # self.client is the test client to make requests
+        self.client = self.app.test_client()
+
+        # Push an application context. This is crucial for db operations
+        # and anything else that depends on the current application context.
+        self.app_context = self.app.app_context()
         self.app_context.push()
 
-        # Initialize extensions with the app instance if not already done globally in a way that adapts
-        # For tests, it's often good to ensure they are bound to the test app instance
-        # However, if your app.py initializes them with 'app', this might be redundant
-        # or require careful handling if 'app' is imported directly.
-        # Let's assume app.py's 'app' object is what we're configuring.
-
-        db.init_app(app) # Ensure db is initialized with the potentially reconfigured app
-        bcrypt.init_app(app)
-        login_manager.init_app(app)
-
-        # Create all database tables
+        # Create all database tables. db.create_all() needs an app context.
         db.create_all()
 
     def tearDown(self):
-        # Remove the session and drop all tables
         db.session.remove()
         db.drop_all()
-
-        # Pop the application context
         self.app_context.pop()
 
 if __name__ == "__main__":
