@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h2>{{ title }}</h2>
+<form method="POST" action=""> {# Action URL is handled by Flask's routing based on current URL #}
+    {{ form.hidden_tag() }} {# Includes CSRF token #}
+
+    <p>
+        {{ form.name.label }}<br>
+        {{ form.name(size=32) }}<br>
+        {% if form.name.errors %}
+            {% for error in form.name.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.job_title.label }}<br>
+        {{ form.job_title(size=32) }}<br>
+        {% if form.job_title.errors %}
+            {% for error in form.job_title.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.department.label }}<br>
+        {{ form.department(size=32) }}<br>
+        {% if form.department.errors %}
+            {% for error in form.department.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.hire_date.label }}<br>
+        {{ form.hire_date() }} {# DateField typically doesn't use size attribute #}<br>
+        {% if form.hire_date.errors %}
+            {% for error in form.hire_date.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.date_of_birth.label }}<br>
+        {{ form.date_of_birth() }}<br>
+        {% if form.date_of_birth.errors %}
+            {% for error in form.date_of_birth.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.contact_number.label }}<br>
+        {{ form.contact_number(size=32) }}<br>
+        {% if form.contact_number.errors %}
+            {% for error in form.contact_number.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.emergency_contact.label }}<br>
+        {{ form.emergency_contact(size=32) }}<br>
+        {% if form.emergency_contact.errors %}
+            {% for error in form.emergency_contact.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.emergency_phone.label }}<br>
+        {{ form.emergency_phone(size=32) }}<br>
+        {% if form.emergency_phone.errors %}
+            {% for error in form.emergency_phone.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.submit() }}
+    </p>
+</form>
+
+<p><a href="{{ url_for('employees') }}">Back to Employee List</a></p>
+{% endblock %}

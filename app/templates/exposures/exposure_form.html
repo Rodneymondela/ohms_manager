@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<h2>{{ title }}</h2>
+<form method="POST" action=""> {# Action URL is handled by Flask's routing #}
+    {{ form.hidden_tag() }} {# Includes CSRF token and any other hidden fields #}
+
+    <p>
+        {{ form.employee.label }}<br>
+        {{ form.employee() }}<br>
+        {% if form.employee.errors %}
+            {% for error in form.employee.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.hazard.label }}<br>
+        {{ form.hazard() }}<br>
+        {% if form.hazard.errors %}
+            {% for error in form.hazard.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.exposure_level.label }}<br>
+        {{ form.exposure_level(size=10) }}<br>
+        {% if form.exposure_level.errors %}
+            {% for error in form.exposure_level.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.duration.label }}<br>
+        {{ form.duration(size=10) }}<br>
+        {% if form.duration.errors %}
+            {% for error in form.duration.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.date.label }}<br>
+        {{ form.date() }}<br>
+        {% if form.date.errors %}
+            {% for error in form.date.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.location.label }}<br>
+        {{ form.location(size=32) }}<br>
+        {% if form.location.errors %}
+            {% for error in form.location.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.notes.label }}<br>
+        {{ form.notes(rows=3, cols=40) }}<br>
+        {% if form.notes.errors %}
+            {% for error in form.notes.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
+        {% endif %}
+    </p>
+    <p>
+        {{ form.submit() }}
+    </p>
+</form>
+
+<p><a href="{{ url_for('exposures') }}">Back to Exposure List</a></p>
+{% endblock %}

@@ -30,9 +30,17 @@ class User(db.Model, UserMixin):
 
     def set_password(self, password):
         if len(password) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not any(char.isdigit() for char in password):
-            raise ValueError("Password must contain at least one number")
+            raise ValueError("Password must be at least 8 characters long.")
+        if not re.search(r"[0-9]", password):
+            raise ValueError("Password must contain at least one number.")
+        if not re.search(r"[A-Z]", password):
+            raise ValueError("Password must contain at least one uppercase letter.")
+        if not re.search(r"[a-z]", password):
+            raise ValueError("Password must contain at least one lowercase letter.")
+        if not re.search(r"[!@#$%^&*()-_=+[]{};:'\",.<>/?]", password):
+            raise ValueError("Password must contain at least one special character (e.g., !@#$%^&*).")
+
+        # All checks passed, hash the password
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
     def check_password(self, password):
@@ -89,7 +97,7 @@ class Hazard(db.Model):
     name = db.Column(db.String(100), nullable=False)
     category = db.Column(db.String(50), nullable=False)
     exposure_limit = db.Column(db.Float, nullable=False)
-    unit = db.Column(db.String(20), default='dB(A)')
+    unit = db.Column(db.String(20), nullable=False)
     description = db.Column(db.Text)
     safety_measures = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

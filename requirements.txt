@@ -4,3 +4,4 @@ Flask-SQLAlchemy
 flask-bcrypt
 reportlab
 gunicorn
+Flask-WTF
