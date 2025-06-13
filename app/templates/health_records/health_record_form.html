@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h2 class="mb-4">{{ title }}</h2>
+        <form method="POST" action=""> {# Action URL handled by Flask route #}
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.employee.label(class="form-label") }}
+        {{ form.employee(class="form-select" + (" is-invalid" if form.employee.errors else "")) }} {# Use form-select #}
+        {% if form.employee.errors %}<div class="invalid-feedback">{% for error in form.employee.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.test_type.label(class="form-label") }}
+                {{ form.test_type(class="form-control" + (" is-invalid" if form.test_type.errors else ""), size=32) }}
+                {% if form.test_type.errors %}<div class="invalid-feedback">{% for error in form.test_type.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.result.label(class="form-label") }}
+                {{ form.result(class="form-control" + (" is-invalid" if form.result.errors else ""), size=32) }}
+                {% if form.result.errors %}<div class="invalid-feedback">{% for error in form.result.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form.details.label(class="form-label") }}
+        {{ form.details(class="form-control" + (" is-invalid" if form.details.errors else ""), rows=3, cols=40) }}
+        {% if form.details.errors %}<div class="invalid-feedback">{% for error in form.details.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.date.label(class="form-label") }}
+                {{ form.date(class="form-control" + (" is-invalid" if form.date.errors else "")) }}
+                {% if form.date.errors %}<div class="invalid-feedback">{% for error in form.date.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.next_test_date.label(class="form-label") }}
+                {{ form.next_test_date(class="form-control" + (" is-invalid" if form.next_test_date.errors else "")) }}
+                {% if form.next_test_date.errors %}<div class="invalid-feedback">{% for error in form.next_test_date.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.physician.label(class="form-label") }}
+                {{ form.physician(class="form-control" + (" is-invalid" if form.physician.errors else ""), size=32) }}
+                {% if form.physician.errors %}<div class="invalid-feedback">{% for error in form.physician.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.facility.label(class="form-label") }}
+                {{ form.facility(class="form-control" + (" is-invalid" if form.facility.errors else ""), size=32) }}
+                {% if form.facility.errors %}<div class="invalid-feedback">{% for error in form.facility.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+</form>
+        <p class="mt-4 text-center"><a href="{{ url_for('health_records.list_health_records') }}" class="btn btn-outline-secondary">Back to Health Record List</a></p>
+    </div>
+</div>
+{% endblock %}

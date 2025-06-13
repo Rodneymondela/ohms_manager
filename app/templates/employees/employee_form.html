@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h2 class="mb-4">{{ title }}</h2> {# Added margin-bottom to heading #}
+        <form method="POST" action=""> {# Action URL handled by Flask route #}
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.name.label(class="form-label") }}
+        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), size=32) }}
+        {% if form.name.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.name.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+    <div class="mb-3">
+        {{ form.job_title.label(class="form-label") }}
+        {{ form.job_title(class="form-control" + (" is-invalid" if form.job_title.errors else ""), size=32) }}
+        {% if form.job_title.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.job_title.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+    <div class="mb-3">
+        {{ form.department.label(class="form-label") }}
+        {{ form.department(class="form-control" + (" is-invalid" if form.department.errors else ""), size=32) }}
+        {% if form.department.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.department.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.hire_date.label(class="form-label") }}
+                {{ form.hire_date(class="form-control" + (" is-invalid" if form.hire_date.errors else "")) }}
+                {% if form.hire_date.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.hire_date.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.date_of_birth.label(class="form-label") }}
+                {{ form.date_of_birth(class="form-control" + (" is-invalid" if form.date_of_birth.errors else "")) }}
+                {% if form.date_of_birth.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.date_of_birth.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.contact_number.label(class="form-label") }}
+                {{ form.contact_number(class="form-control" + (" is-invalid" if form.contact_number.errors else ""), size=32) }}
+                {% if form.contact_number.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.contact_number.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.emergency_contact.label(class="form-label") }}
+                {{ form.emergency_contact(class="form-control" + (" is-invalid" if form.emergency_contact.errors else ""), size=32) }}
+                {% if form.emergency_contact.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.emergency_contact.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form.emergency_phone.label(class="form-label") }}
+        {{ form.emergency_phone(class="form-control" + (" is-invalid" if form.emergency_phone.errors else ""), size=32) }}
+        {% if form.emergency_phone.errors %}
+            <div class="invalid-feedback">
+                {% for error in form.emergency_phone.errors %}<span>{{ error }}</span><br>{% endfor %}
+            </div>
+        {% endif %}
+    </div>
+    <div class="mb-3">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
+</form>
+        <p class="mt-4 text-center"><a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline-secondary">Back to Employee List</a></p> {# Adjusted styling and placement #}
+    </div>
+</div>
+{% endblock %}

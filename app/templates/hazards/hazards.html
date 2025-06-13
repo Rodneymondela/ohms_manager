@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Hazards{% endblock %}
+
+{% block content %}
+<h2>Manage Hazards</h2>
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+<p><a href="{{ url_for('hazards.add_hazard') }}" class="btn btn-primary mb-3">Add New Hazard</a></p>
+{% endif %}
+
+{% if hazards %}
+<table class="table table-striped table-hover table-sm">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Exposure Limit</th>
+            <th>Unit</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for hazard in hazards %}
+        <tr>
+            <td>{{ hazard.name }}</td>
+            <td>{{ hazard.category }}</td>
+            <td>{{ hazard.exposure_limit }}</td>
+            <td>{{ hazard.unit }}</td>
+            <td>
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                <a href="{{ url_for('hazards.edit_hazard', hazard_id=hazard.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                {% endif %}
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                <form method="POST" action="{{ url_for('hazards.delete_hazard', hazard_id=hazard.id) }}" class="d-inline ms-1">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this hazard? This might also affect related exposure records.');">Delete</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No hazards found.</p>
+{% endif %}
+{% endblock %}

@@ -4,3 +4,9 @@ Flask-SQLAlchemy
 flask-bcrypt
 reportlab
 gunicorn
+Flask-WTF
+email-validator
+Flask-Migrate
+Flask-Mail
+flask-restx
+psycopg2-binary

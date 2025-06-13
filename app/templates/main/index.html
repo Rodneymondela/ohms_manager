@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title if title else "OHMS Dashboard" }}{% endblock %}
+
+{% block content %}
+<h2>OHMS Dashboard</h2>
+<p>Welcome to the Occupational Health Monitoring System, {{ current_user.username }}!</p>
+<p>Select an option from the navigation menu to get started.</p>
+
+<hr class="my-4">
+
+<div class="row">
+    <!-- Employees Card -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center h-100"> {# h-100 for equal height cards #}
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">Employees</h5>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <p class="card-text display-4">{{ employee_count }}</p>
+                <a href="{{ url_for('employees.list_employees') }}" class="btn btn-sm btn-outline-primary stretched-link">View All</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hazards Card -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-header bg-danger text-white">
+                <h5 class="card-title mb-0">Hazards</h5>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <p class="card-text display-4">{{ hazard_count }}</p>
+                <a href="{{ url_for('hazards.list_hazards') }}" class="btn btn-sm btn-outline-danger stretched-link">View All</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Exposures Card -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="card-title mb-0">Exposures</h5>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <p class="card-text display-4">{{ exposure_count }}</p>
+                <a href="{{ url_for('exposures.list_exposures') }}" class="btn btn-sm btn-outline-warning stretched-link">View All</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Health Records Card -->
+    <div class="col-md-6 col-lg-3 mb-4">
+        <div class="card text-center h-100">
+            <div class="card-header bg-success text-white">
+                <h5 class="card-title mb-0">Health Records</h5>
+            </div>
+            <div class="card-body d-flex flex-column justify-content-between">
+                <p class="card-text display-4">{{ health_record_count }}</p>
+                <a href="{{ url_for('health_records.list_health_records') }}" class="btn btn-sm btn-outline-success stretched-link">View All</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

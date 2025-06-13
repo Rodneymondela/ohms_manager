@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Exposures{% endblock %}
+
+{% block content %}
+<h2>Manage Exposures</h2>
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+<p><a href="{{ url_for('add_exposure') }}" class="btn btn-primary mb-3">Add New Exposure Record</a></p>
+{% endif %}
+
+{% if exposures %}
+<table class="table table-striped table-hover table-sm">
+    <thead>
+        <tr>
+            <th>Employee</th>
+            <th>Hazard</th>
+            <th>Exposure Level</th>
+            <th>Duration (hrs)</th>
+            <th>Date</th>
+            <th>Location</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for exposure in exposures %}
+        <tr>
+            <td>{{ exposure.employee.name if exposure.employee else 'N/A' }}</td>
+            <td>{{ exposure.hazard.name if exposure.hazard else 'N/A' }}</td>
+            <td>{{ exposure.exposure_level }}</td>
+            <td>{{ exposure.duration if exposure.duration is not none else 'N/A' }}</td>
+            <td>{{ exposure.date.strftime('%Y-%m-%d') if exposure.date else 'N/A' }}</td>
+            <td>{{ exposure.location if exposure.location else 'N/A' }}</td>
+            <td>
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                <a href="{{ url_for('exposures.edit_exposure', exposure_id=exposure.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                {% endif %}
+                {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                <form method="POST" action="{{ url_for('exposures.delete_exposure', exposure_id=exposure.id) }}" class="d-inline ms-1">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this exposure record?');">Delete</button>
+                </form>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>No exposure records found.</p>
+{% endif %}
+{% endblock %}
