@@ -12,6 +12,9 @@ class BasicTests(unittest.TestCase):
         self.app.config['WTF_CSRF_ENABLED'] = False
         self.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
         self.app.config['SECRET_KEY'] = 'test_secret_key_for_testing'
+        self.app.config['SERVER_NAME'] = 'localhost.localdomain' # Added for url_for
+        self.app.config['APPLICATION_ROOT'] = '/' # Often needed with SERVER_NAME
+        self.app.config['PREFERRED_URL_SCHEME'] = 'http' # Often needed with SERVER_NAME
         # LOGIN_DISABLED can be useful if you want to bypass login for certain tests,
         # but generally, it's better to test the login flow.
         # self.app.config['LOGIN_DISABLED'] = True

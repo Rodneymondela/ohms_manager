@@ -1,8 +1,9 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, current_app # Added current_app
 from flask_login import login_required, current_user
-from app import db # Assuming db from app package
+from app import db
 from app.models import HealthRecord, Employee
 from app.forms import HealthRecordForm
+from app.decorators import admin_required # Import admin_required
 from . import health_records_bp
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +15,7 @@ def list_health_records(): # Renamed from 'health_records'
 
 @health_records_bp.route('/add', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def add_health_record():
     form = HealthRecordForm()
     form.employee.choices = [(e.id, e.name) for e in Employee.query.order_by(Employee.name).all()]
@@ -37,14 +39,17 @@ def add_health_record():
             return redirect(url_for('health_records.list_health_records'))
         except IntegrityError:
             db.session.rollback()
+            current_app.logger.warning(f'IntegrityError while adding new health record for employee ID {form.employee.data}: {str(e)}', exc_info=True)
             flash('Error: Could not add health record due to a data conflict or missing related employee.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'An unexpected error occurred: {e}', 'danger')
+            current_app.logger.error(f'An unexpected error occurred while adding new health record: {str(e)}', exc_info=True)
+            flash(f'An unexpected error occurred: {str(e)}', 'danger')
     return render_template('health_records/health_record_form.html', form=form, title='Add Health Record')
 
 @health_records_bp.route('/<int:record_id>/edit', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def edit_health_record(record_id):
     record = HealthRecord.query.get_or_404(record_id)
     form = HealthRecordForm(obj=record)
@@ -71,15 +76,18 @@ def edit_health_record(record_id):
             return redirect(url_for('health_records.list_health_records'))
         except IntegrityError:
             db.session.rollback()
+            current_app.logger.warning(f'IntegrityError while updating health record ID {record_id}: {str(e)}', exc_info=True)
             flash('Error: Could not update health record due to a data conflict.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'An unexpected error occurred: {e}', 'danger')
+            current_app.logger.error(f'An unexpected error occurred while updating health record ID {record_id}: {str(e)}', exc_info=True)
+            flash(f'An unexpected error occurred: {str(e)}', 'danger')
 
     return render_template('health_records/health_record_form.html', form=form, title='Edit Health Record', record_id=record_id)
 
 @health_records_bp.route('/<int:record_id>/delete', methods=['POST'])
 @login_required
+@admin_required # Added decorator
 def delete_health_record(record_id):
     record = HealthRecord.query.get_or_404(record_id)
     try:
@@ -91,5 +99,6 @@ def delete_health_record(record_id):
         flash('Error: Could not delete health record due to a data conflict.', 'danger')
     except Exception as e:
         db.session.rollback()
-        flash(f'An unexpected error occurred: {e}', 'danger')
+        current_app.logger.error(f'An unexpected error occurred while deleting health record ID {record_id}: {str(e)}', exc_info=True)
+        flash(f'An unexpected error occurred: {str(e)}', 'danger')
     return redirect(url_for('health_records.list_health_records'))

@@ -1,8 +1,9 @@
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, current_app # Added current_app
 from flask_login import login_required, current_user
-from app import db # Assuming db from app package
+from app import db
 from app.models import Exposure, Employee, Hazard
 from app.forms import ExposureForm
+from app.decorators import admin_required # Import admin_required
 from . import exposures_bp
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +15,7 @@ def list_exposures(): # Renamed from 'exposures'
 
 @exposures_bp.route('/add', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def add_exposure():
     form = ExposureForm()
     form.employee.choices = [(e.id, e.name) for e in Employee.query.order_by(Employee.name).all()]
@@ -40,14 +42,17 @@ def add_exposure():
             flash(f'Error adding exposure record: {e}', 'danger')
         except IntegrityError:
             db.session.rollback()
+            current_app.logger.warning(f'IntegrityError while adding new exposure for employee ID {form.employee.data} and hazard ID {form.hazard.data}: {str(e)}', exc_info=True)
             flash('Error: Could not add exposure record due to a data conflict or missing related record.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'An unexpected error occurred: {e}', 'danger')
+            current_app.logger.error(f'An unexpected error occurred while adding new exposure: {str(e)}', exc_info=True)
+            flash(f'An unexpected error occurred: {str(e)}', 'danger')
     return render_template('exposures/exposure_form.html', form=form, title='Add Exposure Record')
 
 @exposures_bp.route('/<int:exposure_id>/edit', methods=['GET', 'POST'])
 @login_required
+@admin_required
 def edit_exposure(exposure_id):
     exposure = Exposure.query.get_or_404(exposure_id)
     form = ExposureForm(obj=exposure)
@@ -78,15 +83,18 @@ def edit_exposure(exposure_id):
             flash(f'Error updating exposure record: {e}', 'danger')
         except IntegrityError:
             db.session.rollback()
+            current_app.logger.warning(f'IntegrityError while updating exposure ID {exposure_id}: {str(e)}', exc_info=True)
             flash('Error: Could not update exposure record due to a data conflict.', 'danger')
         except Exception as e:
             db.session.rollback()
-            flash(f'An unexpected error occurred: {e}', 'danger')
+            current_app.logger.error(f'An unexpected error occurred while updating exposure ID {exposure_id}: {str(e)}', exc_info=True)
+            flash(f'An unexpected error occurred: {str(e)}', 'danger')
 
     return render_template('exposures/exposure_form.html', form=form, title='Edit Exposure Record', exposure_id=exposure_id)
 
 @exposures_bp.route('/<int:exposure_id>/delete', methods=['POST'])
 @login_required
+@admin_required # Added decorator
 def delete_exposure(exposure_id):
     exposure = Exposure.query.get_or_404(exposure_id)
     try:
@@ -98,5 +106,6 @@ def delete_exposure(exposure_id):
         flash('Error: Could not delete exposure record due to a data conflict.', 'danger')
     except Exception as e:
         db.session.rollback()
-        flash(f'An unexpected error occurred: {e}', 'danger')
+        current_app.logger.error(f'An unexpected error occurred while deleting exposure ID {exposure_id}: {str(e)}', exc_info=True)
+        flash(f'An unexpected error occurred: {str(e)}', 'danger')
     return redirect(url_for('exposures.list_exposures'))

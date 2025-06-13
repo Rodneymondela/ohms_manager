@@ -3,56 +3,54 @@
 {% block title %}{{ title }}{% endblock %}
 
 {% block content %}
-<h2>{{ title }}</h2>
-<form method="POST" action=""> {# Action URL is handled by Flask's routing #}
-    {{ form.hidden_tag() }} {# Includes CSRF token and any other hidden fields #}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h2 class="mb-4">{{ title }}</h2>
+        <form method="POST" action=""> {# Action URL handled by Flask route #}
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+                {{ form.name.label(class="form-label") }}
+        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""), size=32) }}
+        {% if form.name.errors %}<div class="invalid-feedback">{% for error in form.name.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="mb-3">
+        {{ form.category.label(class="form-label") }}
+        {{ form.category(class="form-control" + (" is-invalid" if form.category.errors else ""), size=32) }}
+        {% if form.category.errors %}<div class="invalid-feedback">{% for error in form.category.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+    </div>
 
-    <p>
-        {{ form.name.label }}<br>
-        {{ form.name(size=32) }}<br>
-        {% if form.name.errors %}
-            {% for error in form.name.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
-        {% endif %}
-    </p>
-    <p>
-        {{ form.category.label }}<br>
-        {{ form.category(size=32) }}<br>
-        {% if form.category.errors %}
-            {% for error in form.category.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
-        {% endif %}
-    </p>
-    <p>
-        {{ form.exposure_limit.label }}<br>
-        {{ form.exposure_limit(size=10) }}<br>
-        {% if form.exposure_limit.errors %}
-            {% for error in form.exposure_limit.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
-        {% endif %}
-    </p>
-    <p>
-        {{ form.unit.label }}<br>
-        {{ form.unit(size=10) }}<br>
-        {% if form.unit.errors %}
-            {% for error in form.unit.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
-        {% endif %}
-    </p>
-    <p>
-        {{ form.description.label }}<br>
-        {{ form.description(rows=3, cols=40) }}<br>
-        {% if form.description.errors %}
-            {% for error in form.description.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
-        {% endif %}
-    </p>
-    <p>
-        {{ form.safety_measures.label }}<br>
-        {{ form.safety_measures(rows=3, cols=40) }}<br>
-        {% if form.safety_measures.errors %}
-            {% for error in form.safety_measures.errors %}<span style="color:red;">[{{ error }}]</span>{% endfor %}
-        {% endif %}
-    </p>
-    <p>
-        {{ form.submit() }}
-    </p>
+    <div class="row">
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.exposure_limit.label(class="form-label") }}
+                {{ form.exposure_limit(class="form-control" + (" is-invalid" if form.exposure_limit.errors else ""), size=10) }}
+                {% if form.exposure_limit.errors %}<div class="invalid-feedback">{% for error in form.exposure_limit.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="mb-3">
+                {{ form.unit.label(class="form-label") }}
+                {{ form.unit(class="form-control" + (" is-invalid" if form.unit.errors else ""), size=10) }}
+                {% if form.unit.errors %}<div class="invalid-feedback">{% for error in form.unit.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        {{ form.description.label(class="form-label") }}
+        {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""), rows=3, cols=40) }}
+        {% if form.description.errors %}<div class="invalid-feedback">{% for error in form.description.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="mb-3">
+        {{ form.safety_measures.label(class="form-label") }}
+        {{ form.safety_measures(class="form-control" + (" is-invalid" if form.safety_measures.errors else ""), rows=3, cols=40) }}
+        {% if form.safety_measures.errors %}<div class="invalid-feedback">{% for error in form.safety_measures.errors %}<span>{{ error }}</span><br>{% endfor %}</div>{% endif %}
+    </div>
+    <div class="mb-3">
+        {{ form.submit(class="btn btn-primary") }}
+    </div>
 </form>
-
-<p><a href="{{ url_for('hazards.list_hazards') }}">Back to Hazard List</a></p>
+        <p class="mt-4 text-center"><a href="{{ url_for('hazards.list_hazards') }}" class="btn btn-outline-secondary">Back to Hazard List</a></p>
+    </div>
+</div>
 {% endblock %}

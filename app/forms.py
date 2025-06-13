@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField, DateField, TextAreaField, FloatField, SelectField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange
-from app.models import Employee, Hazard, Exposure, HealthRecord # Updated import path
+from wtforms.validators import DataRequired, Length, Email, EqualTo, Optional, NumberRange, InputRequired # Added InputRequired
+from app.models import Employee, Hazard, Exposure, HealthRecord, ROLE_USER, ROLE_ADMIN # Added ROLE_USER, ROLE_ADMIN
 
 class RegistrationForm(FlaskForm):
     username = StringField('Username',
@@ -39,7 +39,7 @@ class HazardForm(FlaskForm):
     name = StringField('Hazard Name', validators=[DataRequired(), Length(max=100)])
     category = StringField('Category', validators=[DataRequired(), Length(max=50)])
     # Model validates exposure_limit > 0, NumberRange min=0.000001 ensures it's positive and non-zero.
-    exposure_limit = FloatField('Exposure Limit (e.g., 85.0)', validators=[DataRequired(), NumberRange(min=0.000001)])
+    exposure_limit = FloatField('Exposure Limit (e.g., 85.0)', validators=[InputRequired(), NumberRange(min=0.000001)]) # Changed to InputRequired
     unit = StringField('Unit (e.g., dB(A), ppm)', validators=[DataRequired(), Length(max=20)])
     description = TextAreaField('Description', validators=[Optional()])
     safety_measures = TextAreaField('Safety Measures', validators=[Optional()])
@@ -48,7 +48,7 @@ class HazardForm(FlaskForm):
 class ExposureForm(FlaskForm):
     employee = SelectField('Employee', coerce=int, validators=[DataRequired()])
     hazard = SelectField('Hazard', coerce=int, validators=[DataRequired()])
-    exposure_level = FloatField('Exposure Level', validators=[DataRequired(), NumberRange(min=0.000001)]) # Model validates > 0
+    exposure_level = FloatField('Exposure Level', validators=[InputRequired(), NumberRange(min=0.000001)]) # Changed to InputRequired
     duration = FloatField('Duration (e.g., hours)', validators=[Optional(), NumberRange(min=0)])
     date = DateField('Date of Exposure', format='%Y-%m-%d', validators=[DataRequired()])
     location = StringField('Location', validators=[Optional(), Length(max=100)])
@@ -65,3 +65,22 @@ class HealthRecordForm(FlaskForm):
     physician = StringField('Physician', validators=[Optional(), Length(max=100)])
     facility = StringField('Facility', validators=[Optional(), Length(max=100)])
     submit = SubmitField('Save Health Record')
+
+class RequestResetForm(FlaskForm):
+    email = StringField('Your Email Address', validators=[DataRequired(), Email()])
+    submit = SubmitField('Request Password Reset')
+
+class ResetPasswordForm(FlaskForm):
+    password = PasswordField('New Password', validators=[DataRequired()])
+    confirm_password = PasswordField(
+        'Confirm New Password',
+        validators=[DataRequired(), EqualTo('password', message='Passwords must match.')]
+    )
+    submit = SubmitField('Reset Password')
+
+class EditUserForm(FlaskForm):
+    role = SelectField('Role',
+                       choices=[(ROLE_ADMIN, 'Admin'), (ROLE_USER, 'User')],
+                       validators=[DataRequired()])
+    is_active = BooleanField('Active Account Status') # Label clarified slightly
+    submit = SubmitField('Update User Role/Status')

@@ -1,13 +1,61 @@
 services:
   - type: web
     name: ohms-app
-    env: python
-    plan: free
+    env: python # Specifies the runtime environment
+    plan: free # Render service plan
+    region: oregon # Optional: Specify a region, e.g., oregon, frankfurt
     buildCommand: |
-      pip install -r requirements.txt
-    startCommand: gunicorn app:app
+      pip install --upgrade pip && \
+      pip install -r requirements.txt && \
+      python -m flask db upgrade
+    startCommand: gunicorn --chdir /opt/render/project/src/ run:app --log-file - --log-level info --workers 3
     envVars:
-      - key: FLASK_ENV
-        value: production
+      - key: PYTHON_VERSION
+        value: "3.10.13" # Specify a Python version supported by Render
+      - key: PYTHONPATH # Ensure Python can find the 'app' package
+        value: "."
+      - key: FLASK_APP
+        value: run.py
+      - key: FLASK_DEBUG # Use FLASK_DEBUG instead of FLASK_ENV for Flask 2.x+
+        value: 0 # 0 for production, 1 for development
       - key: SECRET_KEY
-        generateValue: true
+        generateValue: true # Render will generate a secure secret key
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ohms-db # Name of the Render PostgreSQL database service
+          property: connectionString
+      # Mail Sending Configuration - values to be set in Render's Environment/Secret settings
+      - key: MAIL_SERVER
+        value: "smtp.example.com" # Placeholder, user must override
+      - key: MAIL_PORT
+        value: "587" # Placeholder, user must override
+      - key: MAIL_USE_TLS
+        value: "true" # Placeholder, user must override
+      - key: MAIL_USERNAME # Typically set as a secret in Render
+        value: ""
+      - key: MAIL_PASSWORD # Typically set as a secret in Render
+        value: ""
+      - key: MAIL_DEFAULT_SENDER
+        value: "noreply@example.com" # Placeholder, user must override
+      # Optional: If using instance folder for logs or other runtime files not in version control
+      # healthCheckPath: / # Optional: Path for health checks
+      # disk:
+      #   name: instance_data
+      #   mountPath: /app/instance # Mount a persistent disk at /app/instance
+      #   sizeGB: 1 # Size of the disk
+      # This disk part is commented out as it depends on actual need for persistent instance folder.
+      # Logs in this app are configured to go to instance/ohms_app.log.
+      # Render's native logging might capture stdout/stderr better than relying on file logs on ephemeral storage.
+      # If file logs on persistent disk are needed, the disk section can be uncommented and log path adjusted.
+      # For now, assuming Gunicorn logs to stdout/stderr which Render captures.
+      # The Python file logger will write to ephemeral storage unless disk is mounted.
+
+databases:
+  - name: ohms-db
+    plan: free # Check Render's current free tier for PostgreSQL availability and terms
+    databaseName: ohms_db_prod # Name for the database within the PostgreSQL instance
+    user: ohms_user_prod # Username for this database
+    postgresMajorVersion: "15" # Specify a PostgreSQL version supported by Render
+    region: oregon # Choose a region, ideally same as web service
+    # Render automatically handles password generation and provides the connection string
+    # via the DATABASE_URL environment variable for the linked web service.

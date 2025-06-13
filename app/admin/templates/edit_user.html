@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+        <h2 class="mb-4">{{ title }}</h2>
+        <p>Editing user: <strong>{{ user_to_edit.username }}</strong> (ID: {{ user_to_edit.id }})</p>
+
+        <form method="POST" action=""> {# Action posts to current URL which includes user_id #}
+            {{ form.hidden_tag() }}
+
+            <div class="mb-3">
+                {{ form.role.label(class="form-label") }}
+                {{ form.role(class="form-select" + (" is-invalid" if form.role.errors else "")) }}
+                {% if form.role.errors %}
+                    <div class="invalid-feedback">
+                        {% for error in form.role.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3 form-check">
+                {{ form.is_active(class="form-check-input" + (" is-invalid" if form.is_active.errors else "")) }}
+                {{ form.is_active.label(class="form-check-label") }}
+                {% if form.is_active.errors %}
+                    <div class="invalid-feedback d-block"> {# d-block for errors on checkbox #}
+                        {% for error in form.is_active.errors %}<span>{{ error }}</span><br>{% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('admin.list_users') }}" class="btn btn-outline-secondary ms-2">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

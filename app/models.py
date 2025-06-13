@@ -1,4 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta # Added timedelta
+import secrets # Added secrets
 # flask_sqlalchemy and flask_bcrypt are initialized in app/__init__.py
 from flask_login import UserMixin
 from sqlalchemy import Index
@@ -6,6 +7,10 @@ from sqlalchemy.orm import validates, relationship
 import re
 
 from app import db, bcrypt # Import db and bcrypt from the app package
+
+# Role constants
+ROLE_USER = 'user'
+ROLE_ADMIN = 'admin'
 
 class User(db.Model, UserMixin):
     __tablename__ = 'users'
@@ -18,7 +23,7 @@ class User(db.Model, UserMixin):
     username = db.Column(db.String(100), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=True)
-    role = db.Column(db.String(50), nullable=False, default='user')
+    role = db.Column(db.String(50), nullable=False, default=ROLE_USER) # Updated default
     last_login = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
@@ -35,7 +40,8 @@ class User(db.Model, UserMixin):
             raise ValueError("Password must contain at least one uppercase letter.")
         if not re.search(r"[a-z]", password):
             raise ValueError("Password must contain at least one lowercase letter.")
-        if not re.search(r"[!@#$%^&*()-_=+[]{};:'\",.<>/?]", password):
+        # Comprehensive special character regex:
+        if not re.search(r'[!@#$%^&*()_\-+=\[\]{};:\'",./?<>~`|]', password):
             raise ValueError("Password must contain at least one special character (e.g., !@#$%^&*).")
 
         # All checks passed, hash the password
@@ -49,6 +55,24 @@ class User(db.Model, UserMixin):
         if email and not re.match(r"[^@]+@[^@]+\.[^@]+", email):
             raise ValueError("Invalid email address")
         return email
+
+    def get_reset_token(self, expires_sec=1800):
+        token = secrets.token_urlsafe(32)
+        self.reset_token = token
+        self.reset_token_expires = datetime.utcnow() + timedelta(seconds=expires_sec)
+        # db.session.commit() # Commit handled by the calling route
+        return token
+
+    @staticmethod
+    def verify_reset_token(token_value):
+        user = User.query.filter_by(reset_token=token_value).first()
+        if user and user.reset_token_expires and user.reset_token_expires > datetime.utcnow():
+            # Optionally, clear the token after successful verification if it's single-use
+            # user.reset_token = None
+            # user.reset_token_expires = None
+            # db.session.commit() # Commit handled by the calling route
+            return user
+        return None
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -72,8 +96,8 @@ class Employee(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    exposures = relationship('Exposure', backref='employee', lazy=True, cascade='all, delete-orphan')
-    health_records = relationship('HealthRecord', backref='employee', lazy=True, cascade='all, delete-orphan')
+    exposures = relationship("Exposure", back_populates="employee", cascade="all, delete-orphan", lazy=True)
+    health_records = relationship("HealthRecord", back_populates="employee", cascade="all, delete-orphan", lazy=True)
 
     @validates('contact_number', 'emergency_phone')
     def validate_phone(self, key, phone):
@@ -101,7 +125,7 @@ class Hazard(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    exposures = relationship('Exposure', backref='hazard', lazy=True, cascade='all, delete-orphan')
+    exposures = relationship("Exposure", back_populates="hazard", cascade="all, delete-orphan", lazy=True)
 
     @validates('exposure_limit')
     def validate_exposure_limit(self, key, limit):
@@ -128,11 +152,11 @@ class Exposure(db.Model):
     date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     location = db.Column(db.String(100))
     notes = db.Column(db.Text)
-    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    employee = relationship('Employee', backref=db.backref('exposures', lazy=True))
-    hazard = relationship('Hazard', backref=db.backref('exposures', lazy=True))
+    employee = relationship("Employee", back_populates="exposures")
+    hazard = relationship("Hazard", back_populates="exposures")
     recorder = relationship('User', foreign_keys=[recorded_by])
 
     @validates('exposure_level')
@@ -161,10 +185,10 @@ class HealthRecord(db.Model):
     next_test_date = db.Column(db.Date)
     physician = db.Column(db.String(100))
     facility = db.Column(db.String(100))
-    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    employee = relationship('Employee', backref=db.backref('health_records', lazy=True))
+    employee = relationship("Employee", back_populates="health_records")
     recorder = relationship('User', foreign_keys=[recorded_by])
 
     def __repr__(self):
