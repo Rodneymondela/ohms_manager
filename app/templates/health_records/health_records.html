@@ -5,7 +5,7 @@
 {% block content %}
 <h2>Manage Health Records</h2>
 {% if current_user.is_authenticated and current_user.role == 'admin' %}
-<p><a href="{{ url_for('add_health_record') }}" class="btn btn-primary mb-3">Add New Health Record</a></p>
+<p><a href="{{ url_for('health_records.add_health_record') }}" class="btn btn-primary mb-3">Add New Health Record</a></p>
 {% endif %}
 
 {% if health_records %}

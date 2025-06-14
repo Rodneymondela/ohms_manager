@@ -1,8 +1,9 @@
-from flask import render_template, redirect, url_for, flash, request, current_app # Added current_app
+from flask import render_template, redirect, url_for, flash, request, current_app, make_response # Added make_response
 from flask_login import login_required, current_user
 from app import db
 from app.models import Exposure, Employee, Hazard
 from app.forms import ExposureForm
+from app.utils.pdf_generator import generate_exposure_pdf # Added PDF generator
 from app.decorators import admin_required # Import admin_required
 from . import exposures_bp
 from sqlalchemy.exc import IntegrityError
@@ -109,3 +110,23 @@ def delete_exposure(exposure_id):
         current_app.logger.error(f'An unexpected error occurred while deleting exposure ID {exposure_id}: {str(e)}', exc_info=True)
         flash(f'An unexpected error occurred: {str(e)}', 'danger')
     return redirect(url_for('exposures.list_exposures'))
+
+@exposures_bp.route('/<int:exposure_id>/print_pdf', methods=['GET'])
+@login_required # Ensures only logged-in users can access
+def print_exposure_pdf(exposure_id):
+    exposure = Exposure.query.get_or_404(exposure_id)
+
+    try:
+        pdf_data = generate_exposure_pdf(exposure)
+
+        response = make_response(pdf_data)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=exposure_record_{exposure.id}.pdf'
+        # Use 'inline' to try to display in browser, 'attachment' to force download.
+
+        current_app.logger.info(f"User {current_user.username} generated PDF for Exposure ID {exposure.id}.")
+        return response
+    except Exception as e:
+        current_app.logger.error(f"Error generating PDF for Exposure ID {exposure.id}: {str(e)}", exc_info=True)
+        flash('Error generating PDF for this exposure record. Please try again later or contact support.', 'danger')
+        return redirect(url_for('exposures.list_exposures')) # Or to a more appropriate error page or back
