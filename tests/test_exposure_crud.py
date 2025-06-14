@@ -1,10 +1,11 @@
 import unittest
 from datetime import date, datetime # Not used directly, but good for context
-from flask import url_for # For checking redirects more robustly
+from flask import url_for, current_app # Added current_app (implicitly used by url_for in app context)
 from urllib.parse import urlparse, parse_qs
+from unittest.mock import patch # Added patch
 from tests.test_config import BasicTests
 from app import db
-from app.models import User, Employee, Hazard, Exposure, ROLE_USER, ROLE_ADMIN # Import roles
+from app.models import User, Employee, Hazard, Exposure, ROLE_USER, ROLE_ADMIN
 
 class TestExposureCRUD(BasicTests):
 
@@ -22,6 +23,19 @@ class TestExposureCRUD(BasicTests):
         self.hazard2 = Hazard(name='Dust', category='Chemical', exposure_limit=10.0, unit='mg/m^3')
 
         db.session.add_all([self.test_user, self.admin_user, self.employee1, self.employee2, self.hazard1, self.hazard2])
+        db.session.commit() # Commit users, employees, hazards first to get IDs
+
+        self.exposure1 = Exposure(
+            employee_id=self.employee1.id,
+            hazard_id=self.hazard1.id,
+            exposure_level=90.0,
+            duration=8,
+            date=date(2023, 10, 15),
+            location="Main Factory Floor",
+            notes="Annual checkup, near machine A.",
+            recorded_by=self.admin_user.id # Or test_user, depending on who should create initial test data
+        )
+        db.session.add(self.exposure1)
         db.session.commit()
 
     def _login_user(self, username, password):
@@ -297,6 +311,42 @@ class TestExposureCRUD(BasicTests):
         self._login_admin_user() # Admin user
         response = self.client.post(url_for('exposures.delete_exposure', exposure_id=9999))
         self.assertEqual(response.status_code, 404)
+
+    # --- PDF Generation Tests ---
+    def test_print_exposure_pdf_unauthenticated(self):
+        # Log out any logged-in user from setUp
+        with self.client as c:
+            c.get(url_for('auth.logout'), follow_redirects=True)
+
+        response = self.client.get(url_for('exposures.print_exposure_pdf', exposure_id=self.exposure1.id))
+        self.assertEqual(response.status_code, 302) # Redirect to login
+        self.assertTrue(urlparse(response.location).path.startswith(url_for('auth.login', _external=False)))
+
+    def test_print_exposure_pdf_authenticated_success(self):
+        self._login_regular_user() # Any logged-in user can print
+        response = self.client.get(url_for('exposures.print_exposure_pdf', exposure_id=self.exposure1.id))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.content_type, 'application/pdf')
+        self.assertIn(f'inline; filename=exposure_record_{self.exposure1.id}.pdf', response.headers['Content-Disposition'])
+        self.assertTrue(response.data.startswith(b'%PDF-'))
+
+    def test_print_exposure_pdf_nonexistent_exposure(self):
+        self._login_regular_user()
+        response = self.client.get(url_for('exposures.print_exposure_pdf', exposure_id=99999))
+        self.assertEqual(response.status_code, 404)
+
+    @patch('app.utils.pdf_generator.generate_exposure_pdf')
+    def test_print_exposure_pdf_generation_error_handling(self, mock_generate_pdf):
+        self._login_regular_user()
+        mock_generate_pdf.side_effect = Exception("Simulated PDF generation error")
+
+        response = self.client.get(url_for('exposures.print_exposure_pdf', exposure_id=self.exposure1.id), follow_redirects=True)
+
+        self.assertEqual(response.status_code, 200) # Follows redirect to list page
+        self.assertIn(b'Error generating PDF for this exposure record.', response.data)
+        self.assertEqual(urlparse(response.request.base_url).path, url_for('exposures.list_exposures', _external=False))
+
 
 if __name__ == '__main__':
     unittest.main()
