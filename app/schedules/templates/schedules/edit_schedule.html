@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html><head><title>Edit Schedule for {{ heg.heg_number }}</title></head><body>
+<h1>Edit Schedule for {{ heg.heg_number }}</h1>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<form method="POST" action="">
+    {{ form.hidden_tag() }}
+    <p>{{ form.sampling_type.label }}<br>{{ form.sampling_type(size=30) }}<br>{% for error in form.sampling_type.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.frequency.label }}<br>{{ form.frequency() }}<br>{% for error in form.frequency.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.last_sampled_date.label }} (YYYY-MM-DD)<br>{{ form.last_sampled_date() }}<br>{% for error in form.last_sampled_date.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.remarks.label }}<br>{{ form.remarks(rows=3, cols=30) }}<br>{% for error in form.remarks.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.submit() }}</p>
+</form>
+<a href="{{ url_for('schedules_bp.index') }}">Back to list</a>
+</body></html>

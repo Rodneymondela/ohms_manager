@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html><head><title>Add HEG</title></head><body>
+<h1>Add New HEG</h1>
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    <ul class=flashes>
+    {% for category, message in messages %}
+      <li class="{{ category }}">{{ message }}</li>
+    {% endfor %}
+    </ul>
+  {% endif %}
+{% endwith %}
+<form method="POST" action="">
+    {{ form.hidden_tag() }}
+    <p>{{ form.heg_number.label }}<br>{{ form.heg_number(size=30) }}<br>{% for error in form.heg_number.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.job_title.label }}<br>{{ form.job_title(size=30) }}<br>{% for error in form.job_title.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.department.label }}<br>{{ form.department(size=30) }}<br>{% for error in form.department.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.exposure_agents.label }}<br>{{ form.exposure_agents(size=30) }}<br>{% for error in form.exposure_agents.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.risk_level.label }}<br>{{ form.risk_level() }}<br>{% for error in form.risk_level.errors %}<span style="color: red;">[{{ error }}]</span>{% endfor %}</p>
+    <p>{{ form.submit() }}</p>
+</form>
+<a href="{{ url_for('schedules_bp.index') }}">Back to list</a>
+</body></html>

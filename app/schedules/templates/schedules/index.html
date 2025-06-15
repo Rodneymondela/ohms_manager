@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head><title>Sampling Schedule</title></head>
+<body>
+    <h1>HEG Sampling Schedules</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class=flashes>
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <p><a href="{{ url_for('schedules_bp.add_heg') }}">Add New HEG</a></p>
+    <table border="1">
+        <tr><th>HEG Number</th><th>Job Title</th><th>Department</th><th>Risk Level</th><th>Schedules</th><th>Actions</th></tr>
+        {% for heg in hegs %}
+        <tr>
+            <td>{{ heg.heg_number }}</td>
+            <td>{{ heg.job_title }}</td>
+            <td>{{ heg.department }}</td>
+            <td>{{ heg.risk_level }}</td>
+            <td>
+                {% if heg.schedules %}
+                <ul>
+                    {% for schedule in heg.schedules %}
+                    <li>
+                        {{ schedule.sampling_type }} ({{ schedule.frequency }})<br>
+                        Last: {{ schedule.last_sampled_date.strftime('%Y-%m-%d') if schedule.last_sampled_date else 'N/A' }}<br>
+                        Next: {{ schedule.next_sample_due.strftime('%Y-%m-%d') if schedule.next_sample_due else 'N/A' }}<br>
+                        <a href="{{ url_for('schedules_bp.edit_schedule', schedule_id=schedule.id) }}">Edit</a> | <a href="{{ url_for('schedules_bp.delete_schedule', schedule_id=schedule.id) }}" onclick="return confirm('Are you sure?');">Delete</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                No schedules yet.
+                {% endif %}
+                <a href="{{ url_for('schedules_bp.add_schedule', heg_id=heg.id) }}">Add Schedule</a>
+            </td>
+            <td><a href="{{ url_for('schedules_bp.edit_heg', heg_id=heg.id) }}">Edit HEG</a> | <a href="{{ url_for('schedules_bp.delete_heg', heg_id=heg.id) }}" onclick="return confirm('Are you sure you want to delete this HEG and all its schedules?');">Delete HEG</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
