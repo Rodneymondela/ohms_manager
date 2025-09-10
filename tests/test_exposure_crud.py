@@ -88,6 +88,10 @@ class TestExposureCRUD(BasicTests):
     def test_list_exposures(self):
         # Listing available to regular users
         self._login_test_user()
+        # First, delete the exposure created in setUp to test the "no exposures" case
+        db.session.delete(self.exposure1)
+        db.session.commit()
+
         response = self.client.get(url_for('exposures.list_exposures'))
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Manage Exposures', response.data)
@@ -176,7 +180,7 @@ class TestExposureCRUD(BasicTests):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Not a valid float value', response.data)
 
-        self.assertEqual(Exposure.query.count(), 0) # No exposure should be created
+        self.assertEqual(Exposure.query.count(), 1) # No new exposure should be created
 
     def test_edit_exposure_get_by_admin(self): # Renamed and split
         self._login_admin_user()
@@ -323,7 +327,7 @@ class TestExposureCRUD(BasicTests):
         self.assertTrue(urlparse(response.location).path.startswith(url_for('auth.login', _external=False)))
 
     def test_print_exposure_pdf_authenticated_success(self):
-        self._login_regular_user() # Any logged-in user can print
+        self._login_test_user() # Any logged-in user can print
         response = self.client.get(url_for('exposures.print_exposure_pdf', exposure_id=self.exposure1.id))
 
         self.assertEqual(response.status_code, 200)
@@ -332,13 +336,13 @@ class TestExposureCRUD(BasicTests):
         self.assertTrue(response.data.startswith(b'%PDF-'))
 
     def test_print_exposure_pdf_nonexistent_exposure(self):
-        self._login_regular_user()
+        self._login_test_user()
         response = self.client.get(url_for('exposures.print_exposure_pdf', exposure_id=99999))
         self.assertEqual(response.status_code, 404)
 
-    @patch('app.utils.pdf_generator.generate_exposure_pdf')
+    @patch('app.exposures.routes.generate_exposure_pdf')
     def test_print_exposure_pdf_generation_error_handling(self, mock_generate_pdf):
-        self._login_regular_user()
+        self._login_test_user()
         mock_generate_pdf.side_effect = Exception("Simulated PDF generation error")
 
         response = self.client.get(url_for('exposures.print_exposure_pdf', exposure_id=self.exposure1.id), follow_redirects=True)

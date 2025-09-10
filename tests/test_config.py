@@ -15,6 +15,17 @@ class BasicTests(unittest.TestCase):
         self.app.config['SERVER_NAME'] = 'localhost.localdomain' # Added for url_for
         self.app.config['APPLICATION_ROOT'] = '/' # Often needed with SERVER_NAME
         self.app.config['PREFERRED_URL_SCHEME'] = 'http' # Often needed with SERVER_NAME
+
+        # Mail configuration for tests
+        self.app.config['MAIL_SERVER'] = 'localhost'
+        self.app.config['MAIL_PORT'] = 25
+        self.app.config['MAIL_USE_TLS'] = False
+        self.app.config['MAIL_USE_SSL'] = False
+        self.app.config['MAIL_USERNAME'] = 'test@example.com'
+        self.app.config['MAIL_PASSWORD'] = ''
+        self.app.config['MAIL_DEFAULT_SENDER'] = 'test@example.com'
+        self.app.config['MAIL_SUPPRESS_SEND'] = True # Prevent emails from being sent during tests
+
         # LOGIN_DISABLED can be useful if you want to bypass login for certain tests,
         # but generally, it's better to test the login flow.
         # self.app.config['LOGIN_DISABLED'] = True

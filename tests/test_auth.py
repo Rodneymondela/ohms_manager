@@ -254,7 +254,7 @@ class TestAuthRoutes(BasicTests):
         response = self.client.post(url_for('auth.request_reset_password'), data={'email': user_email}, follow_redirects=True)
         self.assertEqual(response.status_code, 200) # Redirects to login
         self.assertIn(b'If an account with that email exists, instructions to reset your password have been sent.', response.data)
-        self.assertTrue(urlparse(response.request.base_url).path.endswith(url_for('auth.login')))
+        self.assertEqual(response.request.path, url_for('auth.login', _external=False))
         mock_send_mail.assert_called_once()
 
         updated_user = User.query.filter_by(email=user_email).first()
@@ -266,7 +266,7 @@ class TestAuthRoutes(BasicTests):
         response = self.client.post(url_for('auth.request_reset_password'), data={'email': 'nonexistent@example.com'}, follow_redirects=True)
         self.assertEqual(response.status_code, 200) # Redirects to login
         self.assertIn(b'If an account with that email exists, instructions to reset your password have been sent.', response.data)
-        self.assertTrue(urlparse(response.request.base_url).path.endswith(url_for('auth.login')))
+        self.assertEqual(response.request.path, url_for('auth.login', _external=False))
         mock_send_mail.assert_not_called() # Should not be called if user doesn't exist
 
     def test_request_reset_password_route_authenticated_user(self):
@@ -279,11 +279,11 @@ class TestAuthRoutes(BasicTests):
 
         response_get = self.client.get(url_for('auth.request_reset_password'), follow_redirects=False)
         self.assertEqual(response_get.status_code, 302)
-        self.assertTrue(urlparse(response_get.location).path.endswith(url_for('main.index')))
+        self.assertEqual(urlparse(response_get.location).path, url_for('main.index', _external=False))
 
         response_post = self.client.post(url_for('auth.request_reset_password'), data={'email': 'authed@example.com'}, follow_redirects=False)
         self.assertEqual(response_post.status_code, 302)
-        self.assertTrue(urlparse(response_post.location).path.endswith(url_for('main.index')))
+        self.assertEqual(urlparse(response_post.location).path, url_for('main.index', _external=False))
 
 
     # --- Reset Password with Token Tests ---
@@ -303,7 +303,7 @@ class TestAuthRoutes(BasicTests):
         response = self.client.get(url_for('auth.reset_with_token', token='invalidtoken'), follow_redirects=True)
         self.assertEqual(response.status_code, 200) # Redirects to request_reset
         self.assertIn(b'That is an invalid or expired token.', response.data)
-        self.assertTrue(urlparse(response.request.base_url).path.endswith(url_for('auth.request_reset_password')))
+        self.assertEqual(response.request.path, url_for('auth.request_reset_password', _external=False))
 
     def test_reset_with_token_route_get_expired_token(self):
         user = User(username='expiredtokenuser', email='expiredtoken@example.com')
@@ -332,7 +332,7 @@ class TestAuthRoutes(BasicTests):
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200) # Redirects to login
         self.assertIn(b'Your password has been successfully updated!', response.data)
-        self.assertTrue(urlparse(response.request.base_url).path.endswith(url_for('auth.login')))
+        self.assertEqual(response.request.path, url_for('auth.login', _external=False))
 
         updated_user = User.query.filter_by(email='resetpass@example.com').first()
         self.assertTrue(updated_user.check_password('NewSecurePassword123!'))
@@ -389,18 +389,18 @@ class TestAuthRoutes(BasicTests):
 
         response_get = self.client.get(url_for('auth.reset_with_token', token=token), follow_redirects=False)
         self.assertEqual(response_get.status_code, 302)
-        self.assertTrue(urlparse(response_get.location).path.endswith(url_for('main.index')))
+        self.assertEqual(urlparse(response_get.location).path, url_for('main.index', _external=False))
 
         response_post = self.client.post(url_for('auth.reset_with_token', token=token), data={
             'password': 'NewPassword123!', 'confirm_password': 'NewPassword123!'
         }, follow_redirects=False)
         self.assertEqual(response_post.status_code, 302)
-        self.assertTrue(urlparse(response_post.location).path.endswith(url_for('main.index')))
+        self.assertEqual(urlparse(response_post.location).path, url_for('main.index', _external=False))
 
     def test_auth_event_logging(self):
-        with patch('flask.current_app.logger.info') as mock_logger_info, \
-             patch('flask.current_app.logger.warning') as mock_logger_warning, \
-             patch('flask.current_app.logger.error') as mock_logger_error: # Not strictly testing error here, but good to have
+        with patch('app.auth.routes.current_app.logger.info') as mock_logger_info, \
+             patch('app.auth.routes.current_app.logger.warning') as mock_logger_warning, \
+             patch('app.auth.routes.current_app.logger.error') as mock_logger_error: # Not strictly testing error here, but good to have
 
             # Registration
             reg_response = self.client.post(url_for('auth.register'), data={

@@ -2,6 +2,7 @@ from flask_restx import Resource, Namespace
 from flask_login import login_required, current_user # Added current_user
 from flask import current_app # Added current_app for logging
 from app.models import Employee
+from datetime import datetime
 from .schemas import employee_output_model, employee_input_model # Added employee_input_model
 from app.api import api_restx
 from app import db # Added db
@@ -35,12 +36,15 @@ class EmployeeListResource(Resource):
         """Create a new employee"""
         data = employee_ns.payload
 
+        hire_date_str = data.get('hire_date')
+        date_of_birth_str = data.get('date_of_birth')
+
         new_employee = Employee(
             name=data['name'],
             job_title=data['job_title'],
             department=data['department'],
-            hire_date=data.get('hire_date'),
-            date_of_birth=data.get('date_of_birth'),
+            hire_date=datetime.strptime(hire_date_str, '%Y-%m-%d').date() if hire_date_str else None,
+            date_of_birth=datetime.strptime(date_of_birth_str, '%Y-%m-%d').date() if date_of_birth_str else None,
             contact_number=data.get('contact_number'),
             emergency_contact=data.get('emergency_contact'),
             emergency_phone=data.get('emergency_phone')
@@ -59,7 +63,7 @@ class EmployeeListResource(Resource):
         except Exception as e:
             db.session.rollback()
             current_app.logger.error(f"API: Error creating employee '{data.get('name')}': {str(e)}", exc_info=True)
-            employee_ns.abort(500, "Could not create employee due to an internal error.")
+            employee_ns.abort(500, f"Could not create employee due to an internal error: {str(e)}")
 
 @employee_ns.route('/<int:employee_id>')
 @employee_ns.response(404, 'Employee not found')
@@ -89,8 +93,10 @@ class EmployeeResource(Resource):
         employee_to_update.department = data['department'] # Required field
 
         # Optional fields from input model
-        employee_to_update.hire_date = data.get('hire_date')
-        employee_to_update.date_of_birth = data.get('date_of_birth')
+        hire_date_str = data.get('hire_date')
+        date_of_birth_str = data.get('date_of_birth')
+        employee_to_update.hire_date = datetime.strptime(hire_date_str, '%Y-%m-%d').date() if hire_date_str else None
+        employee_to_update.date_of_birth = datetime.strptime(date_of_birth_str, '%Y-%m-%d').date() if date_of_birth_str else None
         employee_to_update.contact_number = data.get('contact_number')
         employee_to_update.emergency_contact = data.get('emergency_contact')
         employee_to_update.emergency_phone = data.get('emergency_phone')

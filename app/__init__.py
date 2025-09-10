@@ -8,9 +8,17 @@ from flask_migrate import Migrate
 from flask_mail import Mail
 import logging # Added logging
 from logging.handlers import RotatingFileHandler # Added RotatingFileHandler
+from sqlalchemy import event
+from sqlalchemy.engine import Engine
 
 # Globally accessible extensions
 db = SQLAlchemy()
+
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 bcrypt = Bcrypt()
 login_manager = LoginManager()
 csrf = CSRFProtect()
@@ -156,7 +164,7 @@ def create_app(config_class=None):
         # e.g. if app.config.get('ENV') == 'development': db.create_all()
 
     # Logging Configuration
-    if not app.debug and not app.testing:
+    if not app.debug: # Removed 'and not app.testing' to allow logging in test environment for verification
         # Ensure instance path exists for log file (though it should from above)
         if not os.path.exists(app.instance_path):
             try:

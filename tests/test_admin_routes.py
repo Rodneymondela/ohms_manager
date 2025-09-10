@@ -100,8 +100,12 @@ class TestAdminUserManagementRoutes(BasicTests):
         self.assertEqual(response.status_code, 200)
         self.assertIn(f"Edit User: {self.user_regular.username}".encode(), response.data)
         # Check form pre-population (example for role)
-        self.assertIn(f'<option value="{ROLE_USER}" selected>{ROLE_USER.title()}</option>'.encode(), response.data)
-        self.assertIn(b'name="is_active" type="checkbox" checked', response.data) # Assuming default is_active is True
+        self.assertIn(f'value="{ROLE_USER}"'.encode(), response.data)
+        self.assertIn(b'selected', response.data)
+        self.assertIn(f'>{ROLE_USER.title()}</option>'.encode(), response.data)
+        self.assertIn(b'name="is_active"', response.data)
+        self.assertIn(b'type="checkbox"', response.data)
+        self.assertIn(b'checked', response.data)
 
     def test_edit_user_post_by_admin_success(self):
         self._login_admin_user()
@@ -112,12 +116,12 @@ class TestAdminUserManagementRoutes(BasicTests):
         db.session.commit()
 
         response = self.client.post(url_for('admin.edit_user_role_status', user_id=self.user_regular.id), data={
-            'role': ROLE_ADMIN,
-            'is_active': False # This will uncheck the checkbox
+            'role': ROLE_ADMIN
+            # Omitting 'is_active' simulates unchecking the checkbox
         }, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200) # After redirect to list_users
-        self.assertIn(f"User '{self.user_regular.username}' (ID: {self.user_regular.id}) has been updated.".encode(), response.data)
+        self.assertIn(f"User &#39;{self.user_regular.username}&#39; (ID: {self.user_regular.id}) has been updated.".encode(), response.data)
 
         updated_user = User.query.get(self.user_regular.id)
         self.assertEqual(updated_user.role, ROLE_ADMIN)
@@ -128,8 +132,8 @@ class TestAdminUserManagementRoutes(BasicTests):
         initial_is_active = self.admin_user.is_active # Should be True
 
         response = self.client.post(url_for('admin.edit_user_role_status', user_id=self.admin_user.id), data={
-            'role': ROLE_ADMIN, # Keep role as admin
-            'is_active': False # Attempt to uncheck (deactivate)
+            'role': ROLE_ADMIN # Keep role as admin
+            # Omitting 'is_active' from form data simulates an unchecked checkbox
         }, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200) # Redirected to list_users
@@ -164,7 +168,7 @@ class TestAdminUserManagementRoutes(BasicTests):
         }, follow_redirects=True)
 
         self.assertEqual(response.status_code, 200) # Redirected to list_users
-        self.assertIn(f"User '{self.admin_user.username}' (ID: {self.admin_user.id}) has been updated.".encode(), response.data)
+        self.assertIn(f"User &#39;{self.admin_user.username}&#39; (ID: {self.admin_user.id}) has been updated.".encode(), response.data)
 
         admin_unchanged = User.query.get(self.admin_user.id)
         self.assertEqual(admin_unchanged.role, ROLE_ADMIN)

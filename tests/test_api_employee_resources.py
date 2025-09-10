@@ -124,11 +124,9 @@ class TestEmployeeAPI(BasicTests):
     def test_create_employee_by_regular_user_permission_denied(self):
         self._login_regular_user()
         employee_data = {'name': 'Denied User', 'job_title': 'Tester', 'department': 'QA'}
-        response = self.client.post(url_for('api.employees_employee_list_resource'), json=employee_data, follow_redirects=True)
-        # The admin_required decorator redirects to main.index and flashes a message
-        self.assertEqual(response.status_code, 200) # After redirect
-        self.assertTrue(urlparse(response.request.base_url).path.endswith(url_for('main.index', _external=False)))
-        self.assertIn(b'You must be an administrator to access this page.', response.data)
+        response = self.client.post(url_for('api.employees_employee_list_resource'), json=employee_data)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('Administrator access required', response.json['message'])
 
 
     def test_create_employee_missing_required_field_by_admin(self):
@@ -156,10 +154,9 @@ class TestEmployeeAPI(BasicTests):
     def test_update_employee_by_regular_user_permission_denied(self):
         self._login_regular_user()
         update_data = {'name': self.employee1.name, 'job_title': 'Attempted Update', 'department': self.employee1.department}
-        response = self.client.put(url_for('api.employees_employee_resource', employee_id=self.employee1.id), json=update_data, follow_redirects=True)
-        self.assertEqual(response.status_code, 200) # After redirect
-        self.assertTrue(urlparse(response.request.base_url).path.endswith(url_for('main.index', _external=False)))
-        self.assertIn(b'You must be an administrator to access this page.', response.data)
+        response = self.client.put(url_for('api.employees_employee_resource', employee_id=self.employee1.id), json=update_data)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('Administrator access required', response.json['message'])
 
 
     def test_update_employee_invalid_data_by_admin(self):
@@ -203,10 +200,9 @@ class TestEmployeeAPI(BasicTests):
 
     def test_delete_employee_by_regular_user_permission_denied(self):
         self._login_regular_user()
-        response = self.client.delete(url_for('api.employees_employee_resource', employee_id=self.employee1.id), follow_redirects=True)
-        self.assertEqual(response.status_code, 200) # After redirect
-        self.assertTrue(urlparse(response.request.base_url).path.endswith(url_for('main.index', _external=False)))
-        self.assertIn(b'You must be an administrator to access this page.', response.data)
+        response = self.client.delete(url_for('api.employees_employee_resource', employee_id=self.employee1.id))
+        self.assertEqual(response.status_code, 403)
+        self.assertIn('Administrator access required', response.json['message'])
         self.assertIsNotNone(Employee.query.get(self.employee1.id))
 
 

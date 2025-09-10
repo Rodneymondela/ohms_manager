@@ -278,7 +278,7 @@ class TestHazardCRUD(BasicTests):
         self.assertEqual(response.status_code, 404)
 
     def test_delete_hazard_with_exposure_cascade(self):
-        self._login_test_user()
+        self._login_admin_user()
         # Create an employee
         emp = Employee(name='Test Emp For Exposure', job_title='Tester', department='QA', hire_date=date(2023,1,1))
         db.session.add(emp)

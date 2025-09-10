@@ -128,5 +128,5 @@ def print_exposure_pdf(exposure_id):
         return response
     except Exception as e:
         current_app.logger.error(f"Error generating PDF for Exposure ID {exposure.id}: {str(e)}", exc_info=True)
-        flash('Error generating PDF for this exposure record. Please try again later or contact support.', 'danger')
+        flash('Error generating PDF for this exposure record.', 'danger')
         return redirect(url_for('exposures.list_exposures')) # Or to a more appropriate error page or back
