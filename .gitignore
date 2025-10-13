@@ -1,0 +1,15 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Instance folder (for local DB, logs, etc.)
+instance/
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# IDE and OS specific
