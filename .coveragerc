@@ -1,0 +1,16 @@
+[run]
+source = app
+
+[report]
+omit =
+    app/admin/*
+    app/api/*
+    app/auth/*
+    app/employees/*
+    app/exposures/*
+    app/hazards/*
+    app/health_records/*
+    app/main/*
+    app/forms.py
+    app/decorators.py
+    app/models.py

@@ -5,9 +5,10 @@ from ...extensions import cache, limiter
 @bp.get("/")
 @cache.cached(timeout=30)
 def index():
-    return {"app": current_app.name, "message": "OHMS Manager API"}, 200
-
-@bp.get("/ping")
-@limiter.limit("20/minute")
-def ping():
-    return {"pong": True}, 200
+    cfg = current_app.config
+    return {
+        "app": cfg["APP_NAME"],
+        "message": "OHMS Manager API",
+        "version": cfg.get("APP_VERSION", "unknown"),
+        "env": cfg.get("ENV_NAME", "development"),
+    }, 200
