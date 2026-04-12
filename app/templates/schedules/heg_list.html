@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<style>
+  .risk-High     { color: #dc3545; font-weight: 600; }
+  .risk-Moderate { color: #fd7e14; font-weight: 600; }
+  .risk-Low      { color: #198754; font-weight: 600; }
+  .badge-overdue   { background-color: #dc3545; }
+  .badge-due       { background-color: #fd7e14; }
+  .badge-upcoming  { background-color: #0d6efd; }
+  .badge-completed { background-color: #198754; }
+  .stressor-chip { font-size: .75rem; padding: 2px 8px; border-radius: 12px; display: inline-block; margin: 2px; }
+  .cat-Chemical     { background: #fde8e8; color: #b91c1c; }
+  .cat-Physical     { background: #fff3e0; color: #c05621; }
+  .cat-Biological   { background: #e8f5e9; color: #256029; }
+  .cat-Ergonomic    { background: #e3f2fd; color: #1565c0; }
+  .cat-Psychosocial { background: #f3e8ff; color: #7e22ce; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+  <h2><i class="fas fa-layer-group me-2 text-primary"></i>HEG Register</h2>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('schedules.heg_add') }}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i> Add HEG
+    </a>
+    <a href="{{ url_for('schedules.schedule_list') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-calendar-alt me-1"></i> View Schedules
+    </a>
+    <a href="{{ url_for('schedules.stressor_list') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-biohazard me-1"></i> Manage Stressors
+    </a>
+  </div>
+</div>
+
+{% if hegs %}
+  {% for heg in hegs %}
+  <div class="card mb-4 shadow-sm border-0">
+    <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom">
+      <div>
+        <span class="badge bg-primary fs-6 me-2">{{ heg.heg_number }}</span>
+        <strong>{{ heg.job_title }}</strong>
+        <span class="text-muted ms-2">— {{ heg.department }}</span>
+      </div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="risk-{{ heg.risk_level }}">
+          <i class="fas fa-exclamation-triangle me-1"></i>{{ heg.risk_level }} Risk
+        </span>
+        {% if heg.overdue_count > 0 %}
+          <span class="badge badge-overdue text-white">{{ heg.overdue_count }} Overdue</span>
+        {% endif %}
+        <a href="{{ url_for('schedules.heg_edit', heg_id=heg.id) }}" class="btn btn-sm btn-outline-primary">
+          <i class="fas fa-edit"></i>
+        </a>
+        <form action="{{ url_for('schedules.heg_delete', heg_id=heg.id) }}" method="POST" class="d-inline"
+              onsubmit="return confirm('Delete HEG {{ heg.heg_number }} and all linked data?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-sm btn-outline-danger"><i class="fas fa-trash"></i></button>
+        </form>
+      </div>
+    </div>
+
+    <div class="card-body">
+      {% if heg.description %}
+        <p class="text-muted small mb-3">{{ heg.description }}</p>
+      {% endif %}
+
+      <div class="row">
+        <!-- Stressors column -->
+        <div class="col-md-6">
+          <h6 class="text-uppercase text-muted small mb-2">
+            <i class="fas fa-biohazard me-1"></i>Assigned Stressors
+          </h6>
+          {% if heg.heg_stressors %}
+            {% for hs in heg.heg_stressors %}
+            <div class="d-flex align-items-start justify-content-between border rounded p-2 mb-2 bg-light">
+              <div>
+                <span class="stressor-chip cat-{{ hs.stressor.category }}">{{ hs.stressor.category }}</span>
+                <strong class="ms-1">{{ hs.stressor.name }}</strong>
+                <br>
+                <small class="text-muted">
+                  OEL: <strong>{{ hs.stressor.oel_display() }}</strong>
+                  {% if hs.stressor.oel_reference %}
+                    <span class="ms-1 badge bg-secondary">{{ hs.stressor.oel_reference }}</span>
+                  {% endif %}
+                </small>
+                {% if hs.exposure_notes %}
+                  <br><small class="text-muted fst-italic">{{ hs.exposure_notes }}</small>
+                {% endif %}
+              </div>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <span class="badge bg-{{ 'danger' if hs.monitoring_priority == 'High' else 'warning text-dark' if hs.monitoring_priority == 'Medium' else 'success' }}">
+                  {{ hs.monitoring_priority }}
+                </span>
+                <form action="{{ url_for('schedules.heg_stressor_remove', heg_id=heg.id, hs_id=hs.id) }}"
+                      method="POST" onsubmit="return confirm('Remove this stressor?')">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-times"></i></button>
+                </form>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted small fst-italic">No stressors assigned.</p>
+          {% endif %}
+          <a href="{{ url_for('schedules.heg_stressor_add', heg_id=heg.id) }}" class="btn btn-sm btn-outline-primary mt-1">
+            <i class="fas fa-plus me-1"></i>Add Stressor
+          </a>
+        </div>
+
+        <!-- Schedules column -->
+        <div class="col-md-6">
+          <h6 class="text-uppercase text-muted small mb-2">
+            <i class="fas fa-calendar-check me-1"></i>Sampling Schedules
+          </h6>
+          {% if heg.sampling_schedules %}
+            {% for s in heg.sampling_schedules %}
+            {% set st = s.computed_status %}
+            <div class="d-flex align-items-center justify-content-between border rounded p-2 mb-1 bg-light">
+              <div>
+                <strong class="small">{{ s.stressor.name }}</strong>
+                <span class="text-muted small ms-1">({{ s.frequency }})</span>
+                <br>
+                <small class="text-muted">
+                  Last: {{ s.last_sampled_date or '—' }} &nbsp;|&nbsp;
+                  Next: <strong>{{ s.next_sample_due or '—' }}</strong>
+                </small>
+              </div>
+              <div class="d-flex flex-column align-items-end gap-1">
+                <span class="badge badge-{{ st|lower }} text-white">{{ st }}</span>
+                <a href="{{ url_for('schedules.schedule_edit', schedule_id=s.id) }}"
+                   class="btn btn-sm btn-link p-0 text-primary"><i class="fas fa-edit"></i></a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <p class="text-muted small fst-italic">No schedules yet.</p>
+          {% endif %}
+          <a href="{{ url_for('schedules.schedule_add', heg_id=heg.id) }}" class="btn btn-sm btn-outline-success mt-1">
+            <i class="fas fa-calendar-plus me-1"></i>Add Schedule
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+{% else %}
+  <div class="text-center py-5">
+    <i class="fas fa-layer-group fa-3x text-muted mb-3"></i>
+    <h5 class="text-muted">No HEGs registered yet.</h5>
+    <a href="{{ url_for('schedules.heg_add') }}" class="btn btn-primary mt-2">
+      <i class="fas fa-plus me-1"></i>Add your first HEG
+    </a>
+  </div>
+{% endif %}
+{% endblock %}

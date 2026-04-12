@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Edit Hazard: {{ hazard.name }}</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('hazard_edit', hazard_id=hazard.id) }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="name">Hazard Name *</label>
+                                    <input type="text" class="form-control" id="name" name="name" 
+                                           value="{{ hazard.name }}" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="category">Category *</label>
+                                    <select class="form-select" id="category" name="category" required>
+                                        <option value="Chemical" {% if hazard.category == 'Chemical' %}selected{% endif %}>Chemical</option>
+                                        <option value="Physical" {% if hazard.category == 'Physical' %}selected{% endif %}>Physical</option>
+                                        <option value="Biological" {% if hazard.category == 'Biological' %}selected{% endif %}>Biological</option>
+                                        <option value="Ergonomic" {% if hazard.category == 'Ergonomic' %}selected{% endif %}>Ergonomic</option>
+                                        <option value="Psychological" {% if hazard.category == 'Psychological' %}selected{% endif %}>Psychological</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="exposure_limit">Exposure Limit *</label>
+                                    <input type="number" step="0.01" class="form-control" 
+                                           id="exposure_limit" name="exposure_limit" 
+                                           value="{{ hazard.exposure_limit }}" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="unit">Unit</label>
+                                    <select class="form-select" id="unit" name="unit">
+                                        <option value="mg/m³" {% if hazard.unit == 'mg/m³' %}selected{% endif %}>mg/m³</option>
+                                        <option value="ppm" {% if hazard.unit == 'ppm' %}selected{% endif %}>ppm</option>
+                                        <option value="dB" {% if hazard.unit == 'dB' %}selected{% endif %}>dB</option>
+                                        <option value="°C" {% if hazard.unit == '°C' %}selected{% endif %}>°C</option>
+                                        <option value="hours" {% if hazard.unit == 'hours' %}selected{% endif %}>hours</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="safety_measures">Safety Measures</label>
+                            <textarea class="form-control" id="safety_measures" name="safety_measures" 
+                                      rows="4">{{ hazard.safety_measures or '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="description">Description</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      rows="3">{{ hazard.description or '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-save"></i> Update Hazard
+                            </button>
+                            <a href="{{ url_for('hazard_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<style>
+  #oel-panel { transition: all 0.2s; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-8">
+
+    <!-- HEG context banner -->
+    <div class="alert alert-primary d-flex align-items-center mb-3">
+      <i class="fas fa-layer-group fa-lg me-3"></i>
+      <div>
+        <strong>{{ heg.heg_number }}</strong> — {{ heg.job_title }}
+        <span class="ms-2 text-muted">| {{ heg.department }}</span>
+        <span class="ms-2 badge bg-{{ 'danger' if heg.risk_level == 'High' else 'warning text-dark' if heg.risk_level == 'Moderate' else 'success' }}">
+          {{ heg.risk_level }} Risk
+        </span>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-biohazard me-2"></i>Assign Stressor to HEG</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.stressor_id.label(class='form-label fw-semibold') }}
+            {{ form.stressor_id(class='form-select ' + ('is-invalid' if form.stressor_id.errors else ''), id='stressor_select') }}
+            {% for e in form.stressor_id.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <!-- Auto-populated OEL panel -->
+          <div id="oel-panel" class="p-3 rounded mb-3 bg-light border" style="display:none;">
+            <h6 class="text-muted small text-uppercase mb-2"><i class="fas fa-info-circle me-1"></i>Stressor OEL Information</h6>
+            <div class="row g-2 small">
+              <div class="col-sm-4">
+                <span class="text-muted">Category:</span><br>
+                <strong id="oel-category">—</strong>
+              </div>
+              <div class="col-sm-4">
+                <span class="text-muted">OEL / Limit:</span><br>
+                <strong id="oel-value" class="text-danger">—</strong>
+              </div>
+              <div class="col-sm-4">
+                <span class="text-muted">Reference:</span><br>
+                <strong id="oel-reference">—</strong>
+              </div>
+              <div class="col-sm-12 mt-1">
+                <span class="text-muted">Sampling Method:</span>
+                <strong id="oel-method">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            {{ form.monitoring_priority.label(class='form-label fw-semibold') }}
+            {{ form.monitoring_priority(class='form-select') }}
+          </div>
+
+          <div class="mb-3">
+            {{ form.exposure_notes.label(class='form-label fw-semibold') }}
+            {{ form.exposure_notes(class='form-control') }}
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('schedules.heg_list') }}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left me-1"></i>Cancel
+            </a>
+            {{ form.submit(class='btn btn-primary') }}
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const stressorData = {{ stressor_data | tojson }};
+
+const select   = document.getElementById('stressor_select');
+const panel    = document.getElementById('oel-panel');
+const elCat    = document.getElementById('oel-category');
+const elVal    = document.getElementById('oel-value');
+const elRef    = document.getElementById('oel-reference');
+const elMethod = document.getElementById('oel-method');
+
+function updateOELPanel() {
+  const id   = parseInt(select.value, 10);
+  const info = stressorData[id];
+  if (info) {
+    elCat.textContent    = info.category       || '—';
+    elVal.textContent    = info.oel_display    || '—';
+    elRef.textContent    = info.oel_reference  || '—';
+    elMethod.textContent = info.sampling_method|| '—';
+    panel.style.display  = 'block';
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+select.addEventListener('change', updateOELPanel);
+updateOELPanel();
+</script>
+{% endblock %}

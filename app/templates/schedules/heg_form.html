@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-7">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+          <i class="fas fa-layer-group me-2"></i>{{ title }}
+        </h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="mb-3">
+            {{ form.heg_number.label(class='form-label fw-semibold') }}
+            {{ form.heg_number(class='form-control ' + ('is-invalid' if form.heg_number.errors else '')) }}
+            {% for e in form.heg_number.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+            <div class="form-text">Use a unique identifier, e.g. HEG-A1, HEG-B2</div>
+          </div>
+
+          <div class="mb-3">
+            {{ form.job_title.label(class='form-label fw-semibold') }}
+            {{ form.job_title(class='form-control ' + ('is-invalid' if form.job_title.errors else '')) }}
+            {% for e in form.job_title.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.department.label(class='form-label fw-semibold') }}
+            {{ form.department(class='form-control ' + ('is-invalid' if form.department.errors else '')) }}
+            {% for e in form.department.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.risk_level.label(class='form-label fw-semibold') }}
+            {{ form.risk_level(class='form-select ' + ('is-invalid' if form.risk_level.errors else '')) }}
+            {% for e in form.risk_level.errors %}
+              <div class="invalid-feedback">{{ e }}</div>
+            {% endfor %}
+          </div>
+
+          <div class="mb-3">
+            {{ form.description.label(class='form-label fw-semibold') }}
+            {{ form.description(class='form-control') }}
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('schedules.heg_list') }}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left me-1"></i>Cancel
+            </a>
+            {{ form.submit(class='btn btn-primary') }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>{{ title }}</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" novalidate>
+          {{ form.hidden_tag() }}
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.heg_id.label(class='form-label fw-semibold') }}
+              {{ form.heg_id(class='form-select ' + ('is-invalid' if form.heg_id.errors else '')) }}
+              {% for e in form.heg_id.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              {{ form.stressor_id.label(class='form-label fw-semibold') }}
+              {{ form.stressor_id(class='form-select ' + ('is-invalid' if form.stressor_id.errors else ''), id='stressor_select') }}
+              {% for e in form.stressor_id.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <!-- OEL info panel -->
+          <div id="oel-panel" class="p-3 rounded mb-3 bg-light border" style="display:none;">
+            <h6 class="text-muted small text-uppercase mb-2"><i class="fas fa-info-circle me-1"></i>OEL Information</h6>
+            <div class="row g-2 small">
+              <div class="col-sm-3"><span class="text-muted">Category:</span><br><strong id="oel-category">—</strong></div>
+              <div class="col-sm-3"><span class="text-muted">OEL Limit:</span><br><strong id="oel-value" class="text-danger">—</strong></div>
+              <div class="col-sm-3"><span class="text-muted">Reference:</span><br><strong id="oel-reference">—</strong></div>
+              <div class="col-sm-3"><span class="text-muted">Method:</span><br><strong id="oel-method">—</strong></div>
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.sampling_type.label(class='form-label fw-semibold') }}
+              {{ form.sampling_type(class='form-select') }}
+            </div>
+            <div class="col-md-6">
+              {{ form.frequency.label(class='form-label fw-semibold') }}
+              {{ form.frequency(class='form-select ' + ('is-invalid' if form.frequency.errors else ''), id='frequency_select') }}
+              {% for e in form.frequency.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.last_sampled_date.label(class='form-label fw-semibold') }}
+              {{ form.last_sampled_date(class='form-control ' + ('is-invalid' if form.last_sampled_date.errors else ''), id='last_sampled', type='date') }}
+              {% for e in form.last_sampled_date.errors %}<div class="invalid-feedback">{{ e }}</div>{% endfor %}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Next Sample Due <small class="text-muted">(auto-calculated)</small></label>
+              <input type="text" id="next_due_display" class="form-control bg-light" readonly placeholder="Select last date + frequency">
+            </div>
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              {{ form.status.label(class='form-label fw-semibold') }}
+              {{ form.status(class='form-select') }}
+            </div>
+          </div>
+
+          <div class="mb-3">
+            {{ form.remarks.label(class='form-label fw-semibold') }}
+            {{ form.remarks(class='form-control') }}
+          </div>
+
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('schedules.schedule_list') }}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left me-1"></i>Cancel
+            </a>
+            {{ form.submit(class='btn btn-success') }}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const stressorData = {{ stressor_data | tojson }};
+
+// OEL panel
+const stressorSel = document.getElementById('stressor_select');
+const oelPanel    = document.getElementById('oel-panel');
+
+function updateOEL() {
+  const id   = parseInt(stressorSel.value, 10);
+  const info = stressorData[id];
+  if (info) {
+    document.getElementById('oel-category').textContent  = info.category        || '—';
+    document.getElementById('oel-value').textContent     = info.oel_display     || '—';
+    document.getElementById('oel-reference').textContent = info.oel_reference   || '—';
+    document.getElementById('oel-method').textContent    = info.sampling_method || '—';
+    oelPanel.style.display = 'block';
+  } else {
+    oelPanel.style.display = 'none';
+  }
+}
+stressorSel.addEventListener('change', updateOEL);
+updateOEL();
+
+// Next due date calculator
+const lastSampled   = document.getElementById('last_sampled');
+const frequencySel  = document.getElementById('frequency_select');
+const nextDueDisplay = document.getElementById('next_due_display');
+
+const freqMonths = { Monthly: 1, Quarterly: 3, 'Bi-Annually': 6, Annually: 12 };
+
+function addMonths(dateStr, months) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().split('T')[0];
+}
+
+function calcNextDue() {
+  const months = freqMonths[frequencySel.value];
+  if (lastSampled.value && months) {
+    nextDueDisplay.value = addMonths(lastSampled.value, months);
+  } else {
+    nextDueDisplay.value = '';
+  }
+}
+
+lastSampled.addEventListener('change', calcNextDue);
+frequencySel.addEventListener('change', calcNextDue);
+calcNextDue();
+</script>
+{% endblock %}

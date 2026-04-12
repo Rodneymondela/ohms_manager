@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="mb-0">Add New Hazard</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('hazard_add') }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="name">Hazard Name *</label>
+                                    <input type="text" class="form-control" id="name" name="name" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="category">Category *</label>
+                                    <select class="form-select" id="category" name="category" required>
+                                        <option value="">Select Category</option>
+                                        <option value="Chemical">Chemical</option>
+                                        <option value="Physical">Physical</option>
+                                        <option value="Biological">Biological</option>
+                                        <option value="Ergonomic">Ergonomic</option>
+                                        <option value="Psychological">Psychological</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="exposure_limit">Exposure Limit *</label>
+                                    <input type="number" step="0.01" class="form-control" 
+                                           id="exposure_limit" name="exposure_limit" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="unit">Unit</label>
+                                    <select class="form-select" id="unit" name="unit">
+                                        <option value="mg/m³">mg/m³</option>
+                                        <option value="ppm">ppm</option>
+                                        <option value="dB">dB</option>
+                                        <option value="°C">°C</option>
+                                        <option value="hours">hours</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="safety_measures">Safety Measures</label>
+                            <textarea class="form-control" id="safety_measures" name="safety_measures" 
+                                      rows="4" placeholder="Enter safety protocols..."></textarea>
+                        </div>
+                        
+                        <div class="form-group mt-3">
+                            <label for="description">Description</label>
+                            <textarea class="form-control" id="description" name="description" 
+                                      rows="3" placeholder="Optional hazard description..."></textarea>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-save"></i> Save Hazard
+                            </button>
+                            <a href="{{ url_for('hazard_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

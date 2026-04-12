@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OHMS — Occupational Health Management System</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    body { background-color: #f8f9fa; padding-top: 56px; }
+    .navbar-brand { font-weight: 700; letter-spacing: .5px; }
+    .nav-link.active { font-weight: 600; }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-md navbar-dark bg-primary fixed-top">
+  <div class="container-fluid px-4">
+    <a class="navbar-brand" href="{{ url_for('schedules.heg_list') }}">
+      <i class="fas fa-hard-hat me-2"></i>OHMS
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navMain">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navMain">
+      <ul class="navbar-nav me-auto gap-1">
+        <li class="nav-item">
+          <a class="nav-link {% if request.blueprint == 'employees' %}active{% endif %}"
+             href="{{ url_for('employees.employee_list') }}">
+            <i class="fas fa-users me-1"></i>Employees
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.blueprint == 'schedules' and 'heg' in request.endpoint %}active{% endif %}"
+             href="{{ url_for('schedules.heg_list') }}">
+            <i class="fas fa-layer-group me-1"></i>HEG Register
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint == 'schedules.schedule_list' %}active{% endif %}"
+             href="{{ url_for('schedules.schedule_list') }}">
+            <i class="fas fa-calendar-alt me-1"></i>Schedules
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if request.endpoint in ['schedules.stressor_list','schedules.stressor_add','schedules.stressor_edit'] %}active{% endif %}"
+             href="{{ url_for('schedules.stressor_list') }}">
+            <i class="fas fa-biohazard me-1"></i>Stressors
+          </a>
+        </li>
+      </ul>
+
+      <ul class="navbar-nav">
+        {% if current_user.is_authenticated %}
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+            <i class="fas fa-user-circle me-1"></i>{{ current_user.username }}
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li>
+              <a class="dropdown-item" href="{{ url_for('auth.logout') }}">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+              </a>
+            </li>
+          </ul>
+        </li>
+        {% else %}
+        <li class="nav-item">
+          <a class="nav-link" href="{{ url_for('auth.login') }}">
+            <i class="fas fa-sign-in-alt me-1"></i>Login
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Flash messages -->
+<div class="container-fluid px-4 mt-2">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    {% endfor %}
+  {% endwith %}
+</div>
+
+<!-- Page content -->
+<main class="container-fluid px-4" id="main-content">
+  {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer class="bg-light mt-5 py-3 border-top">
+  <div class="container text-center text-muted small">
+    OHMS &copy; 2026 — Occupational Hygiene &amp; Medical Surveillance
+  </div>
+</footer>
+
+<!-- Bootstrap JS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

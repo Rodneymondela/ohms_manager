@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Health Records</h1>
+    
+    <div class="mb-4">
+        <a href="{{ url_for('health_add') }}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Add New Record
+        </a>
+        <div class="btn-group float-end">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" 
+                    data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="?filter=all">All Records</a></li>
+                <li><a class="dropdown-item" href="?filter=recent">Recent (Last 30 days)</a></li>
+                <li><a class="dropdown-item" href="?filter=upcoming">Upcoming Tests</a></li>
+                <li><hr class="dropdown-divider"></li>
+                {% for employee in employees %}
+                <li><a class="dropdown-item" href="?employee={{ employee.id }}">{{ employee.name }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">Medical History</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Employee</th>
+                            <th>Test Type</th>
+                            <th>Result</th>
+                            <th>Next Test</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in records %}
+                        <tr class="{% if record.next_test_date and record.next_test_date < datetime.utcnow().date() %}table-warning{% endif %}">
+                            <td>{{ record.date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ record.employee.name }}</td>
+                            <td>{{ record.test_type }}</td>
+                            <td>
+                                <span class="badge bg-{% if record.result.lower() in ['normal', 'negative', 'clear'] %}success{% else %}danger{% endif %}">
+                                    {{ record.result }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if record.next_test_date %}
+                                    {{ record.next_test_date.strftime('%Y-%m-%d') }}
+                                    {% if record.next_test_date < datetime.utcnow().date() %}
+                                        <span class="badge bg-danger">Overdue</span>
+                                    {% endif %}
+                                {% else %}
+                                    N/A
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('health_edit', record_id=record.id) }}" 
+                                       class="btn btn-outline-primary">
+                                        <i class="fas fa-edit"></i> Edit
+                                    </a>
+                                    <button class="btn btn-outline-info" data-bs-toggle="modal" 
+                                            data-bs-target="#detailsModal{{ record.id }}">
+                                        <i class="fas fa-info-circle"></i> Details
+                                    </button>
+                                    <form method="POST" action="{{ url_for('health_delete', record_id=record.id) }}">
+                                        <button type="submit" class="btn btn-outline-danger"
+                                                onclick="return confirm('Delete this health record?')">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Details Modal -->
+                        <div class="modal fade" id="detailsModal{{ record.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header bg-info text-white">
+                                        <h5 class="modal-title">
+                                            Health Record: {{ record.employee.name }}
+                                        </h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6>Employee Information</h6>
+                                                <p>
+                                                    <strong>Name:</strong> {{ record.employee.name }}<br>
+                                                    <strong>Department:</strong> {{ record.employee.department }}<br>
+                                                    <strong>Job Title:</strong> {{ record.employee.job_title }}
+                                                </p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6>Test Information</h6>
+                                                <p>
+                                                    <strong>Date:</strong> {{ record.date.strftime('%Y-%m-%d') }}<br>
+                                                    <strong>Test Type:</strong> {{ record.test_type }}<br>
+                                                    <strong>Result:</strong> 
+                                                    <span class="badge bg-{% if record.result.lower() in ['normal', 'negative', 'clear'] %}success{% else %}danger{% endif %}">
+                                                        {{ record.result }}
+                                                    </span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <p><strong>Next Test Date:</strong> 
+                                                    {% if record.next_test_date %}
+                                                        {{ record.next_test_date.strftime('%Y-%m-%d') }}
+                                                        {% if record.next_test_date < datetime.utcnow().date() %}
+                                                            <span class="badge bg-danger">Overdue</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        N/A
+                                                    {% endif %}
+                                                </p>
+                                                <p><strong>Physician:</strong> {{ record.physician or 'N/A' }}</p>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <p><strong>Facility:</strong> {{ record.facility or 'N/A' }}</p>
+                                                <p><strong>Recorded By:</strong> {{ record.recorder.username }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3">
+                                            <h6>Test Details:</h6>
+                                            <p>{{ record.details or 'No additional details' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<style>
+  .cat-Chemical     { background: #fde8e8; color: #b91c1c; }
+  .cat-Physical     { background: #fff3e0; color: #c05621; }
+  .cat-Biological   { background: #e8f5e9; color: #256029; }
+  .cat-Ergonomic    { background: #e3f2fd; color: #1565c0; }
+  .cat-Psychosocial { background: #f3e8ff; color: #7e22ce; }
+  .cat-badge {
+    font-size: .72rem; padding: 2px 10px; border-radius: 12px;
+    display: inline-block; font-weight: 600;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+  <h2><i class="fas fa-biohazard me-2 text-danger"></i>Stressor Library</h2>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('schedules.stressor_add') }}" class="btn btn-danger">
+      <i class="fas fa-plus me-1"></i>Add Stressor
+    </a>
+    <a href="{{ url_for('schedules.heg_list') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-layer-group me-1"></i>HEG Register
+    </a>
+  </div>
+</div>
+
+{% if stressors %}
+
+{# Group by category #}
+{% set categories = stressors | map(attribute='category') | unique | list %}
+{% for cat in ['Chemical', 'Physical', 'Biological', 'Ergonomic', 'Psychosocial'] %}
+  {% set cat_stressors = stressors | selectattr('category', 'equalto', cat) | list %}
+  {% if cat_stressors %}
+  <div class="mb-4">
+    <h5 class="mb-2">
+      <span class="cat-badge cat-{{ cat }}">
+        <i class="fas fa-{% if cat == 'Chemical' %}flask{% elif cat == 'Physical' %}volume-up{% elif cat == 'Biological' %}virus{% elif cat == 'Ergonomic' %}chair{% else %}brain{% endif %} me-1"></i>
+        {{ cat }}
+      </span>
+      <small class="text-muted ms-2">{{ cat_stressors | length }} stressor(s)</small>
+    </h5>
+
+    <div class="table-responsive">
+      <table class="table table-hover table-bordered align-middle small">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>OEL / Limit</th>
+            <th>Reference</th>
+            <th>Sampling Method</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in cat_stressors %}
+          <tr class="{{ '' if s.is_active else 'table-secondary text-muted' }}">
+            <td>
+              <strong>{{ s.name }}</strong>
+              {% if not s.is_active %}
+                <span class="badge bg-secondary ms-1">Inactive</span>
+              {% endif %}
+            </td>
+            <td>
+              <strong class="text-danger">{{ s.oel_display() }}</strong>
+            </td>
+            <td>{{ s.oel_reference or '—' }}</td>
+            <td>{{ s.sampling_method or '—' }}</td>
+            <td>
+              {% if s.is_active %}
+                <span class="badge bg-success">Active</span>
+              {% else %}
+                <span class="badge bg-secondary">Inactive</span>
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ url_for('schedules.stressor_edit', stressor_id=s.id) }}"
+                 class="btn btn-sm btn-outline-primary" title="Edit">
+                <i class="fas fa-edit"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+{% endfor %}
+
+<p class="text-muted small">{{ stressors | length }} stressor(s) in library.</p>
+
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-biohazard fa-3x text-muted mb-3"></i>
+  <h5 class="text-muted">No stressors defined yet.</h5>
+  <p class="text-muted">Add stressors to build your occupational hygiene library.</p>
+  <a href="{{ url_for('schedules.stressor_add') }}" class="btn btn-danger mt-2">
+    <i class="fas fa-plus me-1"></i>Add Stressor
+  </a>
+</div>
+{% endif %}
+{% endblock %}

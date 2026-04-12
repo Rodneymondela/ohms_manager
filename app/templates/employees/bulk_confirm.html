@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mt-4">
+  <h4><i class="fas fa-clipboard-check me-2 text-success"></i>Review &amp; Confirm Import</h4>
+
+  {% if errors %}
+  <div class="alert alert-warning">
+    <strong><i class="fas fa-exclamation-triangle me-1"></i>{{ errors|length }} row(s) skipped</strong> due to missing required fields:
+    <ul class="mb-0 mt-1 small">
+      {% for line, msg in errors %}
+        <li>Line {{ line }}: {{ msg }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  {% if rows %}
+  <p class="text-muted small mb-2">
+    <strong>{{ rows|length }}</strong> employee(s) ready to import. Review below, then confirm.
+  </p>
+
+  <div class="table-responsive mb-3">
+    <table class="table table-bordered table-hover table-sm small align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Job Title</th>
+          <th>Department</th>
+          <th>HEG</th>
+          <th>HEG Name</th>
+          <th>Email</th>
+          <th>Contact</th>
+          <th>DOB</th>
+          <th>Date Employed</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td class="text-muted">{{ loop.index }}</td>
+          <td><strong>{{ r.name }}</strong></td>
+          <td>{{ r.job_title }}</td>
+          <td>{{ r.department }}</td>
+          <td>{{ r.heg_number or '—' }}</td>
+          <td>{{ heg_map.get(r.heg_number, '—') if r.heg_number else '—' }}</td>
+          <td>{{ r.email or '—' }}</td>
+          <td>{{ r.contact_number or '—' }}</td>
+          <td>{{ r.date_of_birth or '—' }}</td>
+          <td>{{ r.date_employed or '—' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3 form-check">
+      <input type="checkbox" class="form-check-input" name="skip_dupes" value="1"
+             id="skip_dupes" checked>
+      <label class="form-check-label" for="skip_dupes">
+        Skip duplicate employees (same name + department)
+      </label>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('employees.bulk_upload') }}" class="btn btn-outline-secondary">
+        <i class="fas fa-arrow-left me-1"></i>Re-upload
+      </a>
+      <button type="submit" class="btn btn-success">
+        <i class="fas fa-check me-1"></i>Confirm Import ({{ rows|length }})
+      </button>
+    </div>
+  </form>
+
+  {% else %}
+  <div class="alert alert-warning">No valid rows to import. <a href="{{ url_for('employees.bulk_upload') }}">Try again.</a></div>
+  {% endif %}
+</div>
+{% endblock %}

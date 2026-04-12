@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<style>
+  .badge-overdue   { background-color: #dc3545; }
+  .badge-due       { background-color: #fd7e14; }
+  .badge-upcoming  { background-color: #0d6efd; }
+  .badge-completed { background-color: #198754; }
+  .badge-unknown   { background-color: #6c757d; }
+  .filter-card { background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px; padding:1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+  <h2><i class="fas fa-calendar-alt me-2 text-success"></i>Sampling Schedules</h2>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('schedules.schedule_add') }}" class="btn btn-success">
+      <i class="fas fa-plus me-1"></i>Add Schedule
+    </a>
+    <a href="{{ url_for('schedules.heg_list') }}" class="btn btn-outline-primary">
+      <i class="fas fa-layer-group me-1"></i>HEG Register
+    </a>
+  </div>
+</div>
+
+<!-- Summary chips -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
+  {% set counts = {'Overdue': 0, 'Due': 0, 'Upcoming': 0, 'Completed': 0} %}
+  {% for s in schedules %}{% set _ = counts.update({s.computed_status: counts.get(s.computed_status, 0) + 1}) %}{% endfor %}
+  <span class="badge badge-overdue text-white fs-6">Overdue: {{ counts['Overdue'] }}</span>
+  <span class="badge badge-due text-white fs-6">Due: {{ counts['Due'] }}</span>
+  <span class="badge badge-upcoming text-white fs-6">Upcoming: {{ counts['Upcoming'] }}</span>
+  <span class="badge badge-completed text-white fs-6">Completed: {{ counts['Completed'] }}</span>
+</div>
+
+<!-- Filters -->
+<div class="filter-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1">Stressor</label>
+      <select name="stressor_id" class="form-select form-select-sm">
+        <option value="">All Stressors</option>
+        {% for s in stressors %}
+          <option value="{{ s.id }}" {% if filters.stressor_id == s.id %}selected{% endif %}>{{ s.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1">Department</label>
+      <select name="department" class="form-select form-select-sm">
+        <option value="">All Departments</option>
+        {% for d in departments %}
+          <option value="{{ d }}" {% if filters.department == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1">Risk Level</label>
+      <select name="risk_level" class="form-select form-select-sm">
+        <option value="">All Levels</option>
+        {% for r in ['Low', 'Moderate', 'High'] %}
+          <option value="{{ r }}" {% if filters.risk_level == r %}selected{% endif %}>{{ r }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1">Status</label>
+      <select name="status" class="form-select form-select-sm">
+        <option value="">All Statuses</option>
+        {% for st in ['Overdue', 'Due', 'Upcoming', 'Completed'] %}
+          <option value="{{ st }}" {% if filters.status == st %}selected{% endif %}>{{ st }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-1">
+      <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+      <a href="{{ url_for('schedules.schedule_list') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+    </div>
+  </form>
+</div>
+
+<!-- Schedule table -->
+{% if schedules %}
+<div class="table-responsive">
+  <table class="table table-hover table-bordered align-middle small">
+    <thead class="table-dark">
+      <tr>
+        <th>HEG</th>
+        <th>Job Title</th>
+        <th>Department</th>
+        <th>Risk</th>
+        <th>Stressor</th>
+        <th>OEL</th>
+        <th>Type</th>
+        <th>Frequency</th>
+        <th>Last Sampled</th>
+        <th>Next Due</th>
+        <th>Status</th>
+        <th>Remarks</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in schedules %}
+      {% set st = s.computed_status %}
+      <tr class="{{ 'table-danger' if st == 'Overdue' else 'table-warning' if st == 'Due' else '' }}">
+        <td><span class="badge bg-primary">{{ s.heg.heg_number }}</span></td>
+        <td>{{ s.heg.job_title }}</td>
+        <td>{{ s.heg.department }}</td>
+        <td>
+          <span class="badge bg-{{ 'danger' if s.heg.risk_level == 'High' else 'warning text-dark' if s.heg.risk_level == 'Moderate' else 'success' }}">
+            {{ s.heg.risk_level }}
+          </span>
+        </td>
+        <td>
+          <strong>{{ s.stressor.name }}</strong>
+          <br><small class="text-muted">{{ s.stressor.category }}</small>
+        </td>
+        <td>
+          <strong>{{ s.stressor.oel_display() }}</strong>
+          {% if s.stressor.oel_reference %}
+            <br><small class="text-muted">{{ s.stressor.oel_reference }}</small>
+          {% endif %}
+        </td>
+        <td>{{ s.sampling_type or '—' }}</td>
+        <td>{{ s.frequency }}</td>
+        <td>{{ s.last_sampled_date or '—' }}</td>
+        <td>
+          <strong>{{ s.next_sample_due or '—' }}</strong>
+          {% if s.days_until_due is not none %}
+            <br>
+            {% if s.days_until_due < 0 %}
+              <small class="text-danger">{{ s.days_until_due|abs }}d overdue</small>
+            {% elif s.days_until_due == 0 %}
+              <small class="text-warning">Due today</small>
+            {% else %}
+              <small class="text-muted">in {{ s.days_until_due }}d</small>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td>
+          <span class="badge badge-{{ st|lower }} text-white">{{ st }}</span>
+        </td>
+        <td>{{ s.remarks or '—' }}</td>
+        <td>
+          <a href="{{ url_for('schedules.schedule_edit', schedule_id=s.id) }}"
+             class="btn btn-sm btn-outline-primary me-1" title="Edit">
+            <i class="fas fa-edit"></i>
+          </a>
+          <form action="{{ url_for('schedules.schedule_delete', schedule_id=s.id) }}"
+                method="POST" class="d-inline"
+                onsubmit="return confirm('Delete this schedule?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="text-muted small">{{ schedules|length }} schedule(s) shown.</p>
+
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-calendar-times fa-3x text-muted mb-3"></i>
+  <h5 class="text-muted">No schedules found.</h5>
+  <a href="{{ url_for('schedules.schedule_add') }}" class="btn btn-success mt-2">
+    <i class="fas fa-plus me-1"></i>Add Schedule
+  </a>
+</div>
+{% endif %}
+{% endblock %}

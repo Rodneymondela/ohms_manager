@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Edit Exposure Record</h5>
+                    <small class="text-muted">Recorded on {{ exposure.date.strftime('%Y-%m-%d') }} by {{ exposure.recorder.username }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('exposure_edit', exposure_id=exposure.id) }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="employee_id" class="form-label">Employee *</label>
+                                    <select class="form-select" id="employee_id" name="employee_id" required>
+                                        {% for employee in employees %}
+                                        <option value="{{ employee.id }}" 
+                                                {% if employee.id == exposure.employee_id %}selected{% endif %}>
+                                            {{ employee.name }} ({{ employee.department }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="hazard_id" class="form-label">Hazard *</label>
+                                    <select class="form-select" id="hazard_id" name="hazard_id" required>
+                                        {% for hazard in hazards %}
+                                        <option value="{{ hazard.id }}" 
+                                                data-unit="{{ hazard.unit }}"
+                                                data-limit="{{ hazard.exposure_limit }}"
+                                                {% if hazard.id == exposure.hazard_id %}selected{% endif %}>
+                                            {{ hazard.name }} ({{ hazard.category }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="exposure_level" class="form-label">Exposure Level *</label>
+                                    <div class="input-group">
+                                        <input type="number" step="0.01" class="form-control" 
+                                               id="exposure_level" name="exposure_level" 
+                                               value="{{ exposure.exposure_level }}" required>
+                                        <span class="input-group-text" id="unit-display">
+                                            {{ exposure.hazard.unit }}
+                                        </span>
+                                    </div>
+                                    <div id="limit-warning" class="text-danger 
+                                        {% if exposure.exposure_level <= exposure.hazard.exposure_limit %}d-none{% endif %}">
+                                        Warning: Exceeds recommended limit of {{ exposure.hazard.exposure_limit }} {{ exposure.hazard.unit }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="date" class="form-label">Exposure Date *</label>
+                                    <input type="date" class="form-control" id="date" name="date" 
+                                           value="{{ exposure.date.strftime('%Y-%m-%d') }}" required>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="duration" class="form-label">Duration (hours)</label>
+                                    <input type="number" step="0.1" class="form-control" 
+                                           id="duration" name="duration" 
+                                           value="{{ exposure.duration or '' }}">
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="location" class="form-label">Location</label>
+                                    <input type="text" class="form-control" id="location" name="location" 
+                                           value="{{ exposure.location or '' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3">{{ exposure.notes or '' }}</textarea>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-warning text-dark">
+                                <i class="fas fa-save"></i> Update Exposure Record
+                            </button>
+                            <a href="{{ url_for('exposure_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const hazardSelect = document.getElementById('hazard_id');
+    const unitDisplay = document.getElementById('unit-display');
+    const exposureInput = document.getElementById('exposure_level');
+    const limitWarning = document.getElementById('limit-warning');
+    
+    hazardSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const unit = selectedOption.getAttribute('data-unit');
+        const limit = selectedOption.getAttribute('data-limit');
+        
+        unitDisplay.textContent = unit || '-';
+        
+        // Check if current value exceeds new hazard's limit
+        if (exposureInput.value && limit) {
+            if (parseFloat(exposureInput.value) > parseFloat(limit)) {
+                limitWarning.classList.remove('d-none');
+                limitWarning.innerHTML = `Warning: Exceeds recommended limit of ${limit} ${unit}`;
+            } else {
+                limitWarning.classList.add('d-none');
+            }
+        }
+    });
+    
+    exposureInput.addEventListener('input', function() {
+        const selectedHazard = hazardSelect.options[hazardSelect.selectedIndex];
+        const limit = parseFloat(selectedHazard.getAttribute('data-limit'));
+        const currentValue = parseFloat(this.value);
+        
+        if (!isNaN(limit) && !isNaN(currentValue) && currentValue > limit) {
+            const unit = selectedHazard.getAttribute('data-unit');
+            limitWarning.classList.remove('d-none');
+            limitWarning.innerHTML = `Warning: Exceeds recommended limit of ${limit} ${unit}`;
+        } else {
+            limitWarning.classList.add('d-none');
+        }
+    });
+});
+</script>
+{% endblock %}

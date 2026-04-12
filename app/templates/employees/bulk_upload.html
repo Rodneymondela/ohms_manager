@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<style>
+  .drop-zone {
+    border: 2px dashed #0d6efd;
+    border-radius: 10px;
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background .2s;
+  }
+  .drop-zone.drag-over { background: #e7f0ff; }
+  .drop-zone input[type=file] { display: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-4">
+  <div class="col-md-8">
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h4><i class="fas fa-file-upload me-2 text-success"></i>Bulk Employee Upload</h4>
+      <a href="{{ url_for('employees.csv_template') }}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-download me-1"></i>Download CSV Template
+      </a>
+    </div>
+
+    <!-- Format guide -->
+    <div class="alert alert-info small mb-4">
+      <strong><i class="fas fa-info-circle me-1"></i>CSV Format</strong>
+      <p class="mb-1 mt-1">Required columns: <code>name</code>, <code>job_title</code>, <code>department</code></p>
+      <p class="mb-0">Optional: <code>heg_number</code>, <code>email</code>, <code>contact_number</code>,
+         <code>date_of_birth</code> (YYYY-MM-DD), <code>emergency_contact</code>, <code>date_employed</code></p>
+    </div>
+
+    <div class="card shadow-sm border-0">
+      <div class="card-body p-4">
+        <form method="POST" enctype="multipart/form-data" novalidate id="upload-form">
+          {{ form.hidden_tag() }}
+
+          <!-- Drop zone -->
+          <div class="drop-zone mb-3" id="drop-zone" onclick="document.getElementById('csv_file').click()">
+            <i class="fas fa-cloud-upload-alt fa-3x text-primary mb-2"></i>
+            <p class="mb-1 fw-semibold">Drag &amp; drop your CSV here</p>
+            <p class="text-muted small mb-2">or click to browse</p>
+            <span id="file-name" class="badge bg-secondary">No file selected</span>
+            {{ form.csv_file(id='csv_file', accept='.csv') }}
+          </div>
+          {% for e in form.csv_file.errors %}
+            <div class="text-danger small mb-2">{{ e }}</div>
+          {% endfor %}
+
+          <div class="d-flex justify-content-between">
+            <a href="{{ url_for('employees.employee_list') }}" class="btn btn-outline-secondary">
+              <i class="fas fa-arrow-left me-1"></i>Cancel
+            </a>
+            {{ form.submit(class='btn btn-success') }}
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('csv_file');
+const fileName  = document.getElementById('file-name');
+
+fileInput.addEventListener('change', () => {
+  fileName.textContent = fileInput.files[0]?.name || 'No file selected';
+  fileName.className = 'badge bg-primary';
+});
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    fileInput.files = dt.files;
+    fileName.textContent = file.name;
+    fileName.className = 'badge bg-primary';
+  }
+});
+</script>
+{% endblock %}

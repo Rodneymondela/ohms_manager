@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block extra_css %}
+<style>
+  .filter-card { background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px; padding:1rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mt-4 mb-3">
+  <h2><i class="fas fa-users me-2 text-primary"></i>Employees
+    <small class="text-muted fs-6 ms-2">{{ employees|length }} shown</small>
+  </h2>
+  <div class="d-flex gap-2">
+    <a href="{{ url_for('employees.employee_add') }}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i>Add Employee
+    </a>
+    <a href="{{ url_for('employees.bulk_upload') }}" class="btn btn-outline-success">
+      <i class="fas fa-file-upload me-1"></i>Bulk Upload
+    </a>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="filter-card mb-4">
+  <form method="GET" class="row g-2 align-items-end">
+    <div class="col-md-4">
+      <label class="form-label small fw-semibold mb-1">Search Name</label>
+      <input type="text" name="q" value="{{ filters.q }}" class="form-control form-control-sm"
+             placeholder="Type to search...">
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small fw-semibold mb-1">Department</label>
+      <select name="department" class="form-select form-select-sm">
+        <option value="">All Departments</option>
+        {% for d in departments %}
+          <option value="{{ d }}" {% if filters.department == d %}selected{% endif %}>{{ d }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small fw-semibold mb-1">HEG</label>
+      <select name="heg" class="form-select form-select-sm">
+        <option value="">All HEGs</option>
+        {% for h in hegs %}
+          <option value="{{ h.heg_number }}" {% if filters.heg == h.heg_number %}selected{% endif %}>
+            {{ h.heg_number }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-1">
+      <label class="form-label small fw-semibold mb-1">Active</label>
+      <select name="active" class="form-select form-select-sm">
+        <option value="1" {% if filters.active == '1' %}selected{% endif %}>Yes</option>
+        <option value="0" {% if filters.active == '0' %}selected{% endif %}>All</option>
+      </select>
+    </div>
+    <div class="col-md-2 d-flex gap-1">
+      <button type="submit" class="btn btn-primary btn-sm w-100">Filter</button>
+      <a href="{{ url_for('employees.employee_list') }}" class="btn btn-outline-secondary btn-sm">Clear</a>
+    </div>
+  </form>
+</div>
+
+{% if employees %}
+<div class="table-responsive">
+  <table class="table table-hover table-bordered align-middle small">
+    <thead class="table-dark">
+      <tr>
+        <th>Name</th>
+        <th>Job Title</th>
+        <th>Department</th>
+        <th>HEG</th>
+        <th>HEG Name</th>
+        <th>Contact</th>
+        <th>Email</th>
+        <th>Age</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in employees %}
+      <tr class="{{ '' if e.is_active else 'table-secondary text-muted' }}">
+        <td><strong>{{ e.name }}</strong></td>
+        <td>{{ e.job_title }}</td>
+        <td>{{ e.department }}</td>
+        <td>
+          {% if e.heg_number %}
+            <span class="badge bg-primary">{{ e.heg_number }}</span>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>{{ heg_map.get(e.heg_number, '—') if e.heg_number else '—' }}</td>
+        <td>{{ e.contact_number or '—' }}</td>
+        <td>{{ e.email or '—' }}</td>
+        <td>{{ e.age or '—' }}</td>
+        <td>
+          {% if e.is_active %}
+            <span class="badge bg-success">Active</span>
+          {% else %}
+            <span class="badge bg-secondary">Inactive</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('employees.employee_edit', emp_id=e.id) }}"
+             class="btn btn-sm btn-outline-primary me-1" title="Edit">
+            <i class="fas fa-edit"></i>
+          </a>
+          <form action="{{ url_for('employees.employee_delete', emp_id=e.id) }}"
+                method="POST" class="d-inline"
+                onsubmit="return confirm('Delete {{ e.name }}?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-sm btn-outline-danger" title="Delete">
+              <i class="fas fa-trash"></i>
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="text-center py-5">
+  <i class="fas fa-users fa-3x text-muted mb-3"></i>
+  <h5 class="text-muted">No employees found.</h5>
+  <div class="d-flex gap-2 justify-content-center mt-3">
+    <a href="{{ url_for('employees.employee_add') }}" class="btn btn-primary">
+      <i class="fas fa-plus me-1"></i>Add Employee
+    </a>
+    <a href="{{ url_for('employees.bulk_upload') }}" class="btn btn-outline-success">
+      <i class="fas fa-file-upload me-1"></i>Bulk Upload CSV
+    </a>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

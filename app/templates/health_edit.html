@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Edit Health Record</h5>
+                    <small class="text-muted">Recorded on {{ record.date.strftime('%Y-%m-%d') }} by {{ record.recorder.username }}</small>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('health_edit', record_id=record.id) }}">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="employee_id" class="form-label">Employee *</label>
+                                    <select class="form-select" id="employee_id" name="employee_id" required>
+                                        {% for employee in employees %}
+                                        <option value="{{ employee.id }}" 
+                                                {% if employee.id == record.employee_id %}selected{% endif %}>
+                                            {{ employee.name }} ({{ employee.department }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="test_type" class="form-label">Test Type *</label>
+                                    <select class="form-select" id="test_type" name="test_type" required>
+                                        <option value="Physical Examination" {% if record.test_type == 'Physical Examination' %}selected{% endif %}>Physical Examination</option>
+                                        <option value="Blood Test" {% if record.test_type == 'Blood Test' %}selected{% endif %}>Blood Test</option>
+                                        <option value="Hearing Test" {% if record.test_type == 'Hearing Test' %}selected{% endif %}>Hearing Test</option>
+                                        <option value="Vision Test" {% if record.test_type == 'Vision Test' %}selected{% endif %}>Vision Test</option>
+                                        <option value="Respiratory Test" {% if record.test_type == 'Respiratory Test' %}selected{% endif %}>Respiratory Test</option>
+                                        <option value="X-Ray" {% if record.test_type == 'X-Ray' %}selected{% endif %}>X-Ray</option>
+                                        <option value="Other" {% if record.test_type == 'Other' %}selected{% endif %}>Other</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="result" class="form-label">Result *</label>
+                                    <select class="form-select" id="result" name="result" required>
+                                        <option value="Normal" {% if record.result == 'Normal' %}selected{% endif %}>Normal</option>
+                                        <option value="Abnormal" {% if record.result == 'Abnormal' %}selected{% endif %}>Abnormal</option>
+                                        <option value="Negative" {% if record.result == 'Negative' %}selected{% endif %}>Negative</option>
+                                        <option value="Positive" {% if record.result == 'Positive' %}selected{% endif %}>Positive</option>
+                                        <option value="Clear" {% if record.result == 'Clear' %}selected{% endif %}>Clear</option>
+                                        <option value="Follow-up Required" {% if record.result == 'Follow-up Required' %}selected{% endif %}>Follow-up Required</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="date" class="form-label">Test Date *</label>
+                                    <input type="date" class="form-control" id="date" name="date" 
+                                           value="{{ record.date.strftime('%Y-%m-%d') }}" required>
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="next_test_date" class="form-label">Next Test Date</label>
+                                    <input type="date" class="form-control" id="next_test_date" name="next_test_date"
+                                           value="{{ record.next_test_date.strftime('%Y-%m-%d') if record.next_test_date else '' }}">
+                                </div>
+                                
+                                <div class="form-group mb-3">
+                                    <label for="physician" class="form-label">Physician</label>
+                                    <input type="text" class="form-control" id="physician" name="physician"
+                                           value="{{ record.physician or '' }}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="facility" class="form-label">Facility</label>
+                                    <input type="text" class="form-control" id="facility" name="facility"
+                                           value="{{ record.facility or '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="details" class="form-label">Details</label>
+                                    <textarea class="form-control" id="details" name="details" rows="3">{{ record.details or '' }}</textarea>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-group mt-4">
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-save"></i> Update Health Record
+                            </button>
+                            <a href="{{ url_for('health_list') }}" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Set minimum date for next test date to be after test date
+    const dateInput = document.getElementById('date');
+    const nextTestInput = document.getElementById('next_test_date');
+    
+    dateInput.addEventListener('change', function() {
+        nextTestInput.min = this.value;
+    });
+    
+    // Initialize the min date based on current test date
+    if (dateInput.value) {
+        nextTestInput.min = dateInput.value;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Employees{% endblock %}
+
+{% block content %}
+<h2>Employees</h2>
+<form method="POST">
+    <label>Name:<br><input type="text" name="name" required></label><br><br>
+    <label>Job Title:<br><input type="text" name="job_title" required></label><br><br>
+    <label>Department:<br><input type="text" name="department" required></label><br><br>
+    <label>Contact Number:<br><input type="text" name="contact_number"></label><br><br>
+    <button type="submit">Add Employee</button>
+</form>
+
+<hr>
+<h3>Employee List</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Name</th><th>Job Title</th><th>Department</th><th>Contact</th><th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for emp in employees %}
+        <tr>
+            <td>{{ emp.name }}</td>
+            <td>{{ emp.job_title }}</td>
+            <td>{{ emp.department }}</td>
+            <td>{{ emp.contact_number or '-' }}</td>
+            <td>
+                <a href="{{ url_for('edit_employee', emp_id=emp.id) }}">Edit</a> |
+                <a href="{{ url_for('delete_employee', emp_id=emp.id) }}" onclick="return confirm('Delete?')">Delete</a>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
