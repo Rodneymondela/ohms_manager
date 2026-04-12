@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from app import create_app, db
 from app.employees.models import Employee
 
@@ -1779,4 +1780,4 @@ with app.app_context():
         db.session.add(emp)
         added += 1
     db.session.commit()
-    print(f"Done — {added} employees imported.")
+    print(f"Done â€” {added} employees imported.")
