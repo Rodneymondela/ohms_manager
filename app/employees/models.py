@@ -16,7 +16,7 @@ class Employee(db.Model):
     name             = db.Column(db.String(120), nullable=False)
     job_title        = db.Column(db.String(120), nullable=False)
     department       = db.Column(db.String(100), nullable=False)
-    heg_number       = db.Column(db.String(30),  nullable=True)   # matches HEG.heg_number
+    heg_number       = db.Column(db.String(120), nullable=True)   # matches HEG.heg_number
     email            = db.Column(db.String(120), nullable=True)
     contact_number   = db.Column(db.String(30),  nullable=True)
     date_of_birth    = db.Column(db.Date,        nullable=True)
