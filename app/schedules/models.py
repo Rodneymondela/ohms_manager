@@ -6,7 +6,7 @@ Models: Stressor, HEG, HEGStressor, SamplingSchedule,
 """
 
 import calendar
-from datetime import date
+from datetime import date, datetime
 from app import db
 
 
@@ -316,3 +316,177 @@ class MedicalRecord(db.Model):
 
     def __repr__(self):
         return f"<MedicalRecord emp:{self.employee_id} test:{self.test_name} status:{self.status}>"
+
+
+# ---------------------------------------------------------------------------
+# FieldSheet  (electronic field data capture sheet)
+# ---------------------------------------------------------------------------
+
+class FieldSheet(db.Model):
+    __tablename__ = 'field_sheet'
+
+    id               = db.Column(db.Integer, primary_key=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # ── Header ───────────────────────────────────────────────────────────────
+    mine_site        = db.Column(db.String(120), nullable=True)
+    heg              = db.Column(db.String(40),  nullable=True)
+    sampling_quarter = db.Column(db.String(10),  nullable=True)
+    survey_number    = db.Column(db.String(80),  nullable=True)
+
+    # ── Employee being sampled ────────────────────────────────────────────────
+    employee_name    = db.Column(db.String(120), nullable=True)
+    coy_number       = db.Column(db.String(40),  nullable=True)
+    job_title        = db.Column(db.String(120), nullable=True)
+    company_name     = db.Column(db.String(120), nullable=True)
+    sampling_date    = db.Column(db.Date,        nullable=True)
+    shift_sampled    = db.Column(db.String(40),  nullable=True)
+    purpose          = db.Column(db.Text,        nullable=True)
+
+    # ── Weather conditions ────────────────────────────────────────────────────
+    weather_wet      = db.Column(db.Boolean, default=False)
+    weather_dry      = db.Column(db.Boolean, default=False)
+    weather_hot      = db.Column(db.Boolean, default=False)
+    weather_warm     = db.Column(db.Boolean, default=False)
+    weather_cold     = db.Column(db.Boolean, default=False)
+    wind_speed       = db.Column(db.String(60),  nullable=True)  # Calm/Gentle/Fresh
+    indoor_ac        = db.Column(db.Boolean, default=False)
+    indoor_lev       = db.Column(db.Boolean, default=False)
+    cabin_ac         = db.Column(db.Boolean, default=False)
+
+    # ── Briefing checklist (6 items) ──────────────────────────────────────────
+    brief_1          = db.Column(db.Boolean, default=False)
+    brief_2          = db.Column(db.Boolean, default=False)
+    brief_3          = db.Column(db.Boolean, default=False)
+    brief_4          = db.Column(db.Boolean, default=False)
+    brief_5          = db.Column(db.Boolean, default=False)
+    brief_6          = db.Column(db.Boolean, default=False)
+
+    # ── Noise sampling ────────────────────────────────────────────────────────
+    noise_sources        = db.Column(db.Text,        nullable=True)
+    noise_control_types  = db.Column(db.String(120), nullable=True)
+    noise_demarcated     = db.Column(db.String(3),   nullable=True)  # Yes/No
+    noise_hpd_provided   = db.Column(db.String(3),   nullable=True)
+    noise_dbadge_serial  = db.Column(db.String(80),  nullable=True)
+    noise_cal_date       = db.Column(db.Date,        nullable=True)
+    noise_method         = db.Column(db.String(80),  nullable=True)
+    noise_pre_cal        = db.Column(db.String(40),  nullable=True)
+    noise_post_cal       = db.Column(db.String(40),  nullable=True)
+    noise_time_on        = db.Column(db.String(10),  nullable=True)
+    noise_time_off       = db.Column(db.String(10),  nullable=True)
+    noise_run_time       = db.Column(db.Integer,     nullable=True)
+    noise_laeq           = db.Column(db.Float,       nullable=True)
+
+    # ── Airborne pollutants sampling ──────────────────────────────────────────
+    air_contaminant      = db.Column(db.String(120), nullable=True)
+    air_control_types    = db.Column(db.String(120), nullable=True)
+    air_personal_sample  = db.Column(db.String(3),   nullable=True)
+    air_area_sample      = db.Column(db.String(3),   nullable=True)
+    air_pump_serial      = db.Column(db.String(80),  nullable=True)
+    air_filter_number    = db.Column(db.String(80),  nullable=True)
+    air_cal_date         = db.Column(db.Date,        nullable=True)
+    air_method           = db.Column(db.String(80),  nullable=True)
+    air_pre_cal_flow     = db.Column(db.Float,       nullable=True)
+    air_post_cal_flow    = db.Column(db.Float,       nullable=True)
+    air_time_on          = db.Column(db.String(10),  nullable=True)
+    air_time_off         = db.Column(db.String(10),  nullable=True)
+    air_run_time         = db.Column(db.Integer,     nullable=True)
+
+    # ── Acknowledgement & sign-off ────────────────────────────────────────────
+    wearer_signature     = db.Column(db.String(120), nullable=True)
+    sampled_by           = db.Column(db.String(120), nullable=True)
+    sampled_designation  = db.Column(db.String(80),  nullable=True)
+    sampled_date         = db.Column(db.Date,        nullable=True)
+    verified_by          = db.Column(db.String(120), nullable=True)
+
+    # ── Scanned copy ──────────────────────────────────────────────────────────
+    scan_filename        = db.Column(db.String(255), nullable=True)
+
+    @property
+    def status(self):
+        has_core = bool(self.employee_name and self.sampling_date)
+        has_sampling = bool(
+            self.noise_dbadge_serial or self.noise_laeq or
+            self.air_contaminant or self.air_pump_serial
+        )
+        has_scan = bool(self.scan_filename)
+        if has_core and has_sampling and has_scan:
+            return 'Completed'
+        return 'Draft'
+
+    def to_dict(self):
+        return {
+            'id':               self.id,
+            'created_at':       self.created_at.isoformat() if self.created_at else None,
+            'status':           self.status,
+            # Header
+            'mine_site':        self.mine_site,
+            'heg':              self.heg,
+            'sampling_quarter': self.sampling_quarter,
+            'survey_number':    self.survey_number,
+            # Employee
+            'employee_name':    self.employee_name,
+            'coy_number':       self.coy_number,
+            'job_title':        self.job_title,
+            'company_name':     self.company_name,
+            'sampling_date':    self.sampling_date.isoformat() if self.sampling_date else None,
+            'shift_sampled':    self.shift_sampled,
+            'purpose':          self.purpose,
+            # Weather
+            'weather_wet':      self.weather_wet,
+            'weather_dry':      self.weather_dry,
+            'weather_hot':      self.weather_hot,
+            'weather_warm':     self.weather_warm,
+            'weather_cold':     self.weather_cold,
+            'wind_speed':       self.wind_speed,
+            'indoor_ac':        self.indoor_ac,
+            'indoor_lev':       self.indoor_lev,
+            'cabin_ac':         self.cabin_ac,
+            # Briefing
+            'brief_1':          self.brief_1,
+            'brief_2':          self.brief_2,
+            'brief_3':          self.brief_3,
+            'brief_4':          self.brief_4,
+            'brief_5':          self.brief_5,
+            'brief_6':          self.brief_6,
+            # Noise
+            'noise_sources':        self.noise_sources,
+            'noise_control_types':  self.noise_control_types,
+            'noise_demarcated':     self.noise_demarcated,
+            'noise_hpd_provided':   self.noise_hpd_provided,
+            'noise_dbadge_serial':  self.noise_dbadge_serial,
+            'noise_cal_date':       self.noise_cal_date.isoformat() if self.noise_cal_date else None,
+            'noise_method':         self.noise_method,
+            'noise_pre_cal':        self.noise_pre_cal,
+            'noise_post_cal':       self.noise_post_cal,
+            'noise_time_on':        self.noise_time_on,
+            'noise_time_off':       self.noise_time_off,
+            'noise_run_time':       self.noise_run_time,
+            'noise_laeq':           self.noise_laeq,
+            # Airborne
+            'air_contaminant':      self.air_contaminant,
+            'air_control_types':    self.air_control_types,
+            'air_personal_sample':  self.air_personal_sample,
+            'air_area_sample':      self.air_area_sample,
+            'air_pump_serial':      self.air_pump_serial,
+            'air_filter_number':    self.air_filter_number,
+            'air_cal_date':         self.air_cal_date.isoformat() if self.air_cal_date else None,
+            'air_method':           self.air_method,
+            'air_pre_cal_flow':     self.air_pre_cal_flow,
+            'air_post_cal_flow':    self.air_post_cal_flow,
+            'air_time_on':          self.air_time_on,
+            'air_time_off':         self.air_time_off,
+            'air_run_time':         self.air_run_time,
+            # Sign-off
+            'wearer_signature':     self.wearer_signature,
+            'sampled_by':           self.sampled_by,
+            'sampled_designation':  self.sampled_designation,
+            'sampled_date':         self.sampled_date.isoformat() if self.sampled_date else None,
+            'verified_by':          self.verified_by,
+            # Scan
+            'scan_filename':        self.scan_filename,
+            'scan_url':             f'/api/field-sheets/{self.id}/scan' if self.scan_filename else None,
+        }
+
+    def __repr__(self):
+        return f"<FieldSheet id:{self.id} emp:{self.employee_name} status:{self.status}>"

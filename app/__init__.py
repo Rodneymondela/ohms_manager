@@ -61,7 +61,7 @@ def create_app():
     app.register_blueprint(api_bp, url_prefix='/api')
 
     # Import all models so db.create_all() picks up new tables
-    from app.schedules.models import ExposureReading, EmployeeExposure, MedicalRecord  # noqa
+    from app.schedules.models import ExposureReading, EmployeeExposure, MedicalRecord, FieldSheet  # noqa
     from app.employees.models import Employee  # noqa
 
     with app.app_context():
