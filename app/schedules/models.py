@@ -399,8 +399,9 @@ class FieldSheet(db.Model):
     sampled_date         = db.Column(db.Date,        nullable=True)
     verified_by          = db.Column(db.String(120), nullable=True)
 
-    # ── Scanned copy ──────────────────────────────────────────────────────────
+    # ── Scanned copy (stored in Cloudinary) ──────────────────────────────────
     scan_filename        = db.Column(db.String(255), nullable=True)
+    scan_url_external    = db.Column(db.Text,        nullable=True)  # Cloudinary CDN URL
 
     @property
     def status(self):
@@ -486,6 +487,7 @@ class FieldSheet(db.Model):
             # Scan
             'scan_filename':        self.scan_filename,
             'scan_url':             f'/api/field-sheets/{self.id}/scan' if self.scan_filename else None,
+            'scan_url_external':    self.scan_url_external,
         }
 
     def __repr__(self):
