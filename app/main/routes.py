@@ -3,7 +3,7 @@ import os
 
 main = Blueprint('main', __name__)
 
-DIST = os.path.join(os.path.dirname(__file__), '..', 'static', 'dist')
+DIST = os.path.join(os.path.dirname(__file__), '..', '..', 'static')
 
 @main.route('/', defaults={'path': ''})
 @main.route('/<path:path>')
