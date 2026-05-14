@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, make_response
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
@@ -14,7 +14,7 @@ csrf = CSRFProtect()
 
 def create_app():
     static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static')
-    app = Flask(__name__, static_folder=static_dir, static_url_path='')
+    app = Flask(__name__)
 
     from config import Config
     app.config.from_object(Config)
@@ -71,8 +71,13 @@ def create_app():
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')
     def serve_react(path):
-        if path and os.path.exists(os.path.join(static_dir, path)):
+        file_path = os.path.join(static_dir, path)
+        if path and os.path.isfile(file_path):
             return send_from_directory(static_dir, path)
-        return send_from_directory(static_dir, 'index.html')
+        resp = make_response(send_from_directory(static_dir, 'index.html'))
+        resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+        resp.headers['Pragma'] = 'no-cache'
+        resp.headers['Expires'] = '0'
+        return resp
 
     return app
