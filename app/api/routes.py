@@ -1,12 +1,13 @@
 """
 REST JSON API  —  /api/*
 Consumed by the React OHMS Manager frontend.
-No session auth required; CORS is configured in create_app().
+All data is automatically scoped to the current user's operation.
+Super Admin bypasses operation filters and can see all data.
 """
 
 from datetime import date, datetime
 from flask import request, jsonify
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app import db
 from app.api import api_bp
 from app.schedules.models import (
@@ -32,6 +33,35 @@ def _err(msg, code=400):
     return jsonify({'error': msg}), code
 
 
+def _op_id():
+    """Return current user's operation_id, or None for super_admin (no filter)."""
+    if current_user.role == 'super_admin':
+        return None
+    return current_user.operation_id
+
+
+def _scoped(query, model):
+    """Apply operation_id filter to a query unless the user is super_admin."""
+    op = _op_id()
+    if op is not None:
+        return query.filter(model.operation_id == op)
+    return query
+
+
+def _owns(record):
+    """Return 403 error if the current user cannot access this record, else None."""
+    if current_user.role == 'super_admin':
+        return None
+    if getattr(record, 'operation_id', None) != current_user.operation_id:
+        return _err('Access denied', 403)
+    return None
+
+
+def _current_op_id():
+    """Return the operation_id to stamp on new records (None for super_admin creating without op)."""
+    return current_user.operation_id
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # STRESSORS  (Hazards in the React UI)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -39,7 +69,8 @@ def _err(msg, code=400):
 @api_bp.route('/stressors', methods=['GET'])
 @login_required
 def list_stressors():
-    stressors = Stressor.query.filter_by(is_active=True).order_by(Stressor.name).all()
+    q = Stressor.query.filter_by(is_active=True)
+    stressors = _scoped(q, Stressor).order_by(Stressor.name).all()
     return jsonify([s.to_api_dict() for s in stressors])
 
 
@@ -69,6 +100,7 @@ def create_stressor():
         health_effects     = data.get('healthEffects') or None,
         linked_test        = data.get('linkedTest') or None,
         default_frequency  = data.get('frequency') or 'Annual',
+        operation_id       = _current_op_id(),
     )
     db.session.add(s)
     db.session.commit()
@@ -79,6 +111,9 @@ def create_stressor():
 @login_required
 def update_stressor(sid):
     s = Stressor.query.get_or_404(sid)
+    err = _owns(s)
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
 
     if 'name'          in data: s.name              = data['name'].strip()
@@ -103,6 +138,9 @@ def update_stressor(sid):
 @login_required
 def delete_stressor(sid):
     s = Stressor.query.get_or_404(sid)
+    err = _owns(s)
+    if err:
+        return err
     s.is_active = False   # soft-delete
     db.session.commit()
     return jsonify({'deleted': sid})
@@ -115,7 +153,8 @@ def delete_stressor(sid):
 @api_bp.route('/employees', methods=['GET'])
 @login_required
 def list_employees():
-    emps = Employee.query.filter_by(is_active=True).order_by(Employee.name).all()
+    q = Employee.query.filter_by(is_active=True)
+    emps = _scoped(q, Employee).order_by(Employee.name).all()
     return jsonify([e.to_api_dict() for e in emps])
 
 
@@ -128,7 +167,12 @@ def _apply_employee_data(emp, data):
 
     if 'hazardIds' in data:
         ids = [int(i) for i in data['hazardIds']] if data['hazardIds'] else []
-        stressors = Stressor.query.filter(Stressor.id.in_(ids)).all() if ids else []
+        # Only allow stressors from same operation
+        op = _op_id()
+        q = Stressor.query.filter(Stressor.id.in_(ids)) if ids else Stressor.query.filter(False)
+        if op is not None:
+            q = q.filter(Stressor.operation_id == op)
+        stressors = q.all() if ids else []
         emp.stressors = stressors
 
 
@@ -142,10 +186,11 @@ def create_employee():
         return _err('jobTitle is required')
 
     emp = Employee(
-        name       = data['name'].strip(),
-        job_title  = data.get('jobTitle', '').strip(),
-        department = data.get('department', ''),
-        heg_number = data.get('heg') or None,
+        name         = data['name'].strip(),
+        job_title    = data.get('jobTitle', '').strip(),
+        department   = data.get('department', ''),
+        heg_number   = data.get('heg') or None,
+        operation_id = _current_op_id(),
     )
     _apply_employee_data(emp, data)
     db.session.add(emp)
@@ -165,10 +210,11 @@ def bulk_create_employees():
         if not data.get('name') or not data.get('jobTitle'):
             continue
         emp = Employee(
-            name       = data['name'].strip(),
-            job_title  = data.get('jobTitle', '').strip(),
-            department = data.get('department', ''),
-            heg_number = data.get('heg') or None,
+            name         = data['name'].strip(),
+            job_title    = data.get('jobTitle', '').strip(),
+            department   = data.get('department', ''),
+            heg_number   = data.get('heg') or None,
+            operation_id = _current_op_id(),
         )
         _apply_employee_data(emp, data)
         db.session.add(emp)
@@ -182,6 +228,9 @@ def bulk_create_employees():
 @login_required
 def update_employee(eid):
     emp = Employee.query.get_or_404(eid)
+    err = _owns(emp)
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     _apply_employee_data(emp, data)
     db.session.commit()
@@ -192,6 +241,9 @@ def update_employee(eid):
 @login_required
 def delete_employee(eid):
     emp = Employee.query.get_or_404(eid)
+    err = _owns(emp)
+    if err:
+        return err
     emp.is_active = False
     db.session.commit()
     return jsonify({'deleted': eid})
@@ -204,14 +256,16 @@ def delete_employee(eid):
 @api_bp.route('/heg-groups', methods=['GET'])
 @login_required
 def list_heg_groups():
-    hegs = HEG.query.order_by(HEG.heg_number).all()
+    q = HEG.query
+    hegs = _scoped(q, HEG).order_by(HEG.heg_number).all()
     return jsonify([f"{h.heg_number}: {h.job_title}" for h in hegs])
 
 
 @api_bp.route('/hegs', methods=['GET'])
 @login_required
 def list_hegs():
-    hegs = HEG.query.order_by(HEG.heg_number).all()
+    q = HEG.query
+    hegs = _scoped(q, HEG).order_by(HEG.heg_number).all()
     return jsonify([{
         'id':          h.id,
         'heg_number':  h.heg_number,
@@ -228,13 +282,12 @@ def list_hegs():
 @api_bp.route('/departments', methods=['GET'])
 @login_required
 def list_departments():
-    rows = db.session.query(Employee.department)\
-               .filter_by(is_active=True)\
-               .distinct()\
-               .order_by(Employee.department)\
-               .all()
+    q = db.session.query(Employee.department).filter_by(is_active=True)
+    op = _op_id()
+    if op is not None:
+        q = q.filter(Employee.operation_id == op)
+    rows  = q.distinct().order_by(Employee.department).all()
     depts = [r[0] for r in rows if r[0]]
-    # Always include a sensible default set
     defaults = ['Mining', 'Metallurgy', 'Engineering', 'Processing', 'HSE', 'Laboratory']
     merged = sorted(set(defaults) | set(depts))
     return jsonify(merged)
@@ -247,7 +300,8 @@ def list_departments():
 @api_bp.route('/exposure-readings', methods=['GET'])
 @login_required
 def list_exposure_readings():
-    readings = ExposureReading.query.order_by(ExposureReading.date.desc()).all()
+    q = ExposureReading.query
+    readings = _scoped(q, ExposureReading).order_by(ExposureReading.date.desc()).all()
     return jsonify([r.to_api_dict() for r in readings])
 
 
@@ -261,6 +315,10 @@ def create_exposure_reading():
     stressor = Stressor.query.get(int(data['hazardId']))
     if not stressor:
         return _err('stressor not found', 404)
+    # Verify stressor belongs to user's operation
+    err = _owns(stressor)
+    if err:
+        return err
 
     reading = ExposureReading(
         stressor_id    = stressor.id,
@@ -269,13 +327,16 @@ def create_exposure_reading():
         oel_value      = stressor.oel_value,
         oel_unit       = stressor.oel_unit,
         date           = _parse_date(data.get('date')) or date.today(),
+        operation_id   = _current_op_id(),
     )
     db.session.add(reading)
     db.session.flush()   # get reading.id before adding associations
 
+    op = _op_id()
     emp_ids = [int(i) for i in (data.get('employeeIds') or [])]
     for eid in emp_ids:
-        if Employee.query.get(eid):
+        emp = Employee.query.get(eid)
+        if emp and (op is None or emp.operation_id == op):
             db.session.add(EmployeeExposure(reading_id=reading.id, employee_id=eid))
 
     db.session.commit()
@@ -286,6 +347,9 @@ def create_exposure_reading():
 @login_required
 def delete_exposure_reading(rid):
     reading = ExposureReading.query.get_or_404(rid)
+    err = _owns(reading)
+    if err:
+        return err
     db.session.delete(reading)
     db.session.commit()
     return jsonify({'deleted': rid})
@@ -298,7 +362,8 @@ def delete_exposure_reading(rid):
 @api_bp.route('/medical-records', methods=['GET'])
 @login_required
 def list_medical_records():
-    records = MedicalRecord.query.order_by(MedicalRecord.id).all()
+    q = MedicalRecord.query
+    records = _scoped(q, MedicalRecord).order_by(MedicalRecord.id).all()
     return jsonify([r.to_api_dict() for r in records])
 
 
@@ -311,14 +376,23 @@ def create_medical_record():
     if not data.get('employeeId'):
         return _err('employeeId is required')
 
+    # Verify employee belongs to user's operation
+    emp = Employee.query.get(int(data['employeeId']))
+    if not emp:
+        return _err('employee not found', 404)
+    err = _owns(emp)
+    if err:
+        return err
+
     rec = MedicalRecord(
-        employee_id = int(data['employeeId']),
-        stressor_id = int(data['hazardId']) if data.get('hazardId') else None,
-        test_name   = data['testName'].strip(),
-        last_done   = _parse_date(data.get('lastDone')),
-        next_due    = _parse_date(data.get('nextDue')),
-        result      = data.get('result') or None,
-        status      = data.get('status', 'scheduled'),
+        employee_id  = int(data['employeeId']),
+        stressor_id  = int(data['hazardId']) if data.get('hazardId') else None,
+        test_name    = data['testName'].strip(),
+        last_done    = _parse_date(data.get('lastDone')),
+        next_due     = _parse_date(data.get('nextDue')),
+        result       = data.get('result') or None,
+        status       = data.get('status', 'scheduled'),
+        operation_id = _current_op_id(),
     )
     db.session.add(rec)
     db.session.commit()
@@ -332,18 +406,25 @@ def bulk_create_medical_records():
     if not isinstance(items, list):
         return _err('expected a JSON array')
 
+    op = _op_id()
     created = []
     for data in items:
         if not data.get('testName') or not data.get('employeeId'):
             continue
+        emp = Employee.query.get(int(data['employeeId']))
+        if not emp:
+            continue
+        if op is not None and emp.operation_id != op:
+            continue
         rec = MedicalRecord(
-            employee_id = int(data['employeeId']),
-            stressor_id = int(data['hazardId']) if data.get('hazardId') else None,
-            test_name   = data['testName'].strip(),
-            last_done   = _parse_date(data.get('lastDone')),
-            next_due    = _parse_date(data.get('nextDue')),
-            result      = data.get('result') or None,
-            status      = data.get('status', 'scheduled'),
+            employee_id  = int(data['employeeId']),
+            stressor_id  = int(data['hazardId']) if data.get('hazardId') else None,
+            test_name    = data['testName'].strip(),
+            last_done    = _parse_date(data.get('lastDone')),
+            next_due     = _parse_date(data.get('nextDue')),
+            result       = data.get('result') or None,
+            status       = data.get('status', 'scheduled'),
+            operation_id = _current_op_id(),
         )
         db.session.add(rec)
         created.append(rec)
@@ -356,6 +437,9 @@ def bulk_create_medical_records():
 @login_required
 def update_medical_record(mid):
     rec = MedicalRecord.query.get_or_404(mid)
+    err = _owns(rec)
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
 
     if 'employeeId' in data: rec.employee_id = int(data['employeeId'])
@@ -374,6 +458,9 @@ def update_medical_record(mid):
 @login_required
 def delete_medical_record(mid):
     rec = MedicalRecord.query.get_or_404(mid)
+    err = _owns(rec)
+    if err:
+        return err
     db.session.delete(rec)
     db.session.commit()
     return jsonify({'deleted': mid})
@@ -386,10 +473,8 @@ def delete_medical_record(mid):
 @api_bp.route('/sampling-schedules', methods=['GET'])
 @login_required
 def list_sampling_schedules():
-    schedules = (SamplingSchedule.query
-                 .join(HEG).join(Stressor)
-                 .order_by(SamplingSchedule.next_sample_due)
-                 .all())
+    q = SamplingSchedule.query.join(HEG).join(Stressor)
+    schedules = _scoped(q, SamplingSchedule).order_by(SamplingSchedule.next_sample_due).all()
     return jsonify([s.to_dict() for s in schedules])
 
 
@@ -400,6 +485,14 @@ def create_sampling_schedule():
     if not data.get('hegId') or not data.get('stressorId') or not data.get('frequency'):
         return _err('hegId, stressorId and frequency are required')
 
+    # Verify HEG and Stressor belong to user's operation
+    heg = HEG.query.get(int(data['hegId']))
+    if not heg:
+        return _err('HEG not found', 404)
+    err = _owns(heg)
+    if err:
+        return err
+
     s = SamplingSchedule(
         heg_id            = int(data['hegId']),
         stressor_id       = int(data['stressorId']),
@@ -408,6 +501,7 @@ def create_sampling_schedule():
         frequency         = data['frequency'],
         last_sampled_date = _parse_date(data.get('lastSampledDate')),
         remarks           = data.get('remarks') or None,
+        operation_id      = _current_op_id(),
     )
     s.recalculate_next_due()
     db.session.add(s)
@@ -419,6 +513,9 @@ def create_sampling_schedule():
 @login_required
 def update_sampling_schedule(sid):
     s = SamplingSchedule.query.get_or_404(sid)
+    err = _owns(s)
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
 
     if 'hegId'           in data: s.heg_id            = int(data['hegId'])
@@ -437,6 +534,9 @@ def update_sampling_schedule(sid):
 @login_required
 def delete_sampling_schedule(sid):
     s = SamplingSchedule.query.get_or_404(sid)
+    err = _owns(s)
+    if err:
+        return err
     db.session.delete(s)
     db.session.commit()
     return jsonify({'deleted': sid})

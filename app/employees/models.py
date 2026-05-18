@@ -23,6 +23,7 @@ class Employee(db.Model):
     emergency_contact = db.Column(db.String(120), nullable=True)
     date_employed    = db.Column(db.Date,        nullable=True)
     is_active        = db.Column(db.Boolean,     default=True)
+    operation_id     = db.Column(db.Integer,     db.ForeignKey('operation.id'), nullable=True)
 
     # Direct hazard assignments (used by the React frontend)
     stressors = db.relationship('Stressor', secondary=employee_stressor, lazy='subquery',

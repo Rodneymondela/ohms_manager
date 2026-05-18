@@ -3,12 +3,13 @@ Field Sheet endpoints  —  /api/field-sheets/*
 
 Scan files are stored in Cloudinary (persistent across Heroku dyno restarts).
 Falls back to local disk when CLOUDINARY_URL is not set (local dev without addon).
+All queries are scoped to the current user's operation.
 """
 
 import os
 from datetime import datetime
 from flask import request, jsonify, redirect
-from flask_login import login_required
+from flask_login import login_required, current_user
 from werkzeug.utils import secure_filename
 import cloudinary
 import cloudinary.uploader
@@ -19,9 +20,6 @@ from app.schedules.models import FieldSheet
 
 
 ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'tif', 'tiff'}
-
-# Cloudinary is auto-configured from the CLOUDINARY_URL env var set by the addon.
-# Nothing extra needed here — importing cloudinary is enough.
 
 
 def _allowed(filename):
@@ -35,6 +33,20 @@ def _parse_date(s):
         return datetime.strptime(s, '%Y-%m-%d').date()
     except ValueError:
         return None
+
+
+def _op_id():
+    if current_user.role == 'super_admin':
+        return None
+    return current_user.operation_id
+
+
+def _owns(sheet):
+    if current_user.role == 'super_admin':
+        return None
+    if sheet.operation_id != current_user.operation_id:
+        return jsonify({'error': 'Access denied'}), 403
+    return None
 
 
 def _apply(sheet, data):
@@ -91,7 +103,11 @@ def _cloudinary_public_id(sheet_id, filename):
 @api_bp.route('/field-sheets', methods=['GET'])
 @login_required
 def list_field_sheets():
-    sheets = FieldSheet.query.order_by(FieldSheet.created_at.desc()).all()
+    q = FieldSheet.query
+    op = _op_id()
+    if op is not None:
+        q = q.filter(FieldSheet.operation_id == op)
+    sheets = q.order_by(FieldSheet.created_at.desc()).all()
     return jsonify([s.to_dict() for s in sheets])
 
 
@@ -99,7 +115,7 @@ def list_field_sheets():
 @login_required
 def create_field_sheet():
     data = request.get_json(silent=True) or {}
-    sheet = FieldSheet()
+    sheet = FieldSheet(operation_id=current_user.operation_id)
     _apply(sheet, data)
     db.session.add(sheet)
     db.session.commit()
@@ -110,6 +126,9 @@ def create_field_sheet():
 @login_required
 def get_field_sheet(sid):
     sheet = FieldSheet.query.get_or_404(sid)
+    err = _owns(sheet)
+    if err:
+        return err
     return jsonify(sheet.to_dict())
 
 
@@ -117,6 +136,9 @@ def get_field_sheet(sid):
 @login_required
 def update_field_sheet(sid):
     sheet = FieldSheet.query.get_or_404(sid)
+    err = _owns(sheet)
+    if err:
+        return err
     data = request.get_json(silent=True) or {}
     _apply(sheet, data)
     db.session.commit()
@@ -127,14 +149,16 @@ def update_field_sheet(sid):
 @login_required
 def delete_field_sheet(sid):
     sheet = FieldSheet.query.get_or_404(sid)
-    # Remove from Cloudinary if scan exists
+    err = _owns(sheet)
+    if err:
+        return err
     if sheet.scan_filename:
         try:
             public_id = _cloudinary_public_id(sheet.id, sheet.scan_filename)
             cloudinary.api.delete_resources([public_id], resource_type='raw')
             cloudinary.api.delete_resources([public_id], resource_type='image')
         except Exception:
-            pass  # best-effort cleanup
+            pass
     db.session.delete(sheet)
     db.session.commit()
     return jsonify({'deleted': sid})
@@ -144,6 +168,9 @@ def delete_field_sheet(sid):
 @login_required
 def upload_scan(sid):
     sheet = FieldSheet.query.get_or_404(sid)
+    err = _owns(sheet)
+    if err:
+        return err
     if 'file' not in request.files:
         return jsonify({'error': 'No file provided'}), 400
     f = request.files['file']
@@ -153,11 +180,9 @@ def upload_scan(sid):
         return jsonify({'error': 'File type not allowed. Use PDF, PNG, JPG, or TIFF.'}), 400
 
     ext = f.filename.rsplit('.', 1)[1].lower()
-    # PDFs must be uploaded as resource_type='raw'; images as 'image'
     resource_type = 'raw' if ext == 'pdf' else 'image'
     public_id = _cloudinary_public_id(sid, f.filename)
 
-    # Delete old scan from Cloudinary
     if sheet.scan_filename:
         old_id = _cloudinary_public_id(sid, sheet.scan_filename)
         old_ext = sheet.scan_filename.rsplit('.', 1)[-1].lower()
@@ -184,7 +209,9 @@ def upload_scan(sid):
 @login_required
 def download_scan(sid):
     sheet = FieldSheet.query.get_or_404(sid)
+    err = _owns(sheet)
+    if err:
+        return err
     if not sheet.scan_filename or not sheet.scan_url_external:
         return jsonify({'error': 'No scan uploaded'}), 404
-    # Redirect to Cloudinary's CDN URL — no proxying needed
     return redirect(sheet.scan_url_external)

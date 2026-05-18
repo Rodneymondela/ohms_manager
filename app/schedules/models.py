@@ -50,7 +50,7 @@ class Stressor(db.Model):
     __tablename__ = 'stressor'
 
     id              = db.Column(db.Integer, primary_key=True)
-    name            = db.Column(db.String(120), nullable=False, unique=True)
+    name            = db.Column(db.String(120), nullable=False)
     category        = db.Column(db.String(80), nullable=False)          # Chemical, Physical, Biological, etc.
     oel_value       = db.Column(db.Float, nullable=True)                # Numeric limit; None if qualitative
     oel_unit        = db.Column(db.String(40), nullable=True)           # mg/m³, ppm, dB(A), m/s², etc.
@@ -63,6 +63,7 @@ class Stressor(db.Model):
     health_effects     = db.Column(db.Text, nullable=True)
     linked_test        = db.Column(db.String(120), nullable=True)
     default_frequency  = db.Column(db.String(20), nullable=True)   # Annual, 6 Monthly, Quarterly
+    operation_id       = db.Column(db.Integer, db.ForeignKey('operation.id'), nullable=True)
 
     # Relationships
     heg_stressors      = db.relationship('HEGStressor',      back_populates='stressor', cascade='all, delete-orphan')
@@ -105,13 +106,14 @@ class HEG(db.Model):
     __tablename__ = 'heg'
 
     id           = db.Column(db.Integer, primary_key=True)
-    heg_number   = db.Column(db.String(40),  nullable=False, unique=True)
+    heg_number   = db.Column(db.String(40),  nullable=False)
     job_title    = db.Column(db.String(120), nullable=False)
     department   = db.Column(db.String(120), nullable=False)
     risk_level   = db.Column(db.String(20),  nullable=False, default='Moderate')
     description  = db.Column(db.Text, nullable=True)
     occupations  = db.Column(db.JSON, nullable=True, default=list)
     created_at   = db.Column(db.Date, default=date.today)
+    operation_id = db.Column(db.Integer, db.ForeignKey('operation.id'), nullable=True)
 
     # Relationships
     heg_stressors     = db.relationship('HEGStressor',     back_populates='heg',      cascade='all, delete-orphan')
@@ -172,6 +174,7 @@ class SamplingSchedule(db.Model):
     status            = db.Column(db.String(20),  nullable=False, default='Upcoming')
     remarks           = db.Column(db.Text,        nullable=True)
     created_at        = db.Column(db.Date,        default=date.today)
+    operation_id      = db.Column(db.Integer,     db.ForeignKey('operation.id'), nullable=True)
 
     # Relationships
     heg      = db.relationship('HEG',      back_populates='sampling_schedules')
@@ -244,6 +247,7 @@ class ExposureReading(db.Model):
     oel_value      = db.Column(db.Float, nullable=True)   # snapshot at time of reading
     oel_unit       = db.Column(db.String(40), nullable=True)
     date           = db.Column(db.Date, nullable=False, default=date.today)
+    operation_id   = db.Column(db.Integer, db.ForeignKey('operation.id'), nullable=True)
 
     stressor          = db.relationship('Stressor', back_populates='exposure_readings')
     employee_exposures = db.relationship('EmployeeExposure', back_populates='reading', cascade='all, delete-orphan')
@@ -290,14 +294,15 @@ class EmployeeExposure(db.Model):
 class MedicalRecord(db.Model):
     __tablename__ = 'medical_record'
 
-    id          = db.Column(db.Integer, primary_key=True)
-    employee_id = db.Column(db.Integer, db.ForeignKey('employee.id'),  nullable=False)
-    stressor_id = db.Column(db.Integer, db.ForeignKey('stressor.id'),  nullable=True)
-    test_name   = db.Column(db.String(120), nullable=False)
-    last_done   = db.Column(db.Date, nullable=True)
-    next_due    = db.Column(db.Date, nullable=True)
-    result      = db.Column(db.String(120), nullable=True)
-    status      = db.Column(db.String(20),  nullable=False, default='scheduled')
+    id           = db.Column(db.Integer, primary_key=True)
+    employee_id  = db.Column(db.Integer, db.ForeignKey('employee.id'),  nullable=False)
+    stressor_id  = db.Column(db.Integer, db.ForeignKey('stressor.id'),  nullable=True)
+    test_name    = db.Column(db.String(120), nullable=False)
+    last_done    = db.Column(db.Date, nullable=True)
+    next_due     = db.Column(db.Date, nullable=True)
+    result       = db.Column(db.String(120), nullable=True)
+    status       = db.Column(db.String(20),  nullable=False, default='scheduled')
+    operation_id = db.Column(db.Integer,     db.ForeignKey('operation.id'), nullable=True)
 
     employee = db.relationship('Employee', backref=db.backref('medical_records', lazy='dynamic'))
     stressor = db.relationship('Stressor', back_populates='medical_records')
@@ -402,6 +407,7 @@ class FieldSheet(db.Model):
     # ── Scanned copy (stored in Cloudinary) ──────────────────────────────────
     scan_filename        = db.Column(db.String(255), nullable=True)
     scan_url_external    = db.Column(db.Text,        nullable=True)  # Cloudinary CDN URL
+    operation_id         = db.Column(db.Integer,     db.ForeignKey('operation.id'), nullable=True)
 
     @property
     def status(self):
