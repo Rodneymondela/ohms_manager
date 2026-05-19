@@ -27,6 +27,21 @@ def _verify_invite_token(token, max_age=72 * 3600):
         return None, 'Invalid invite link.'
 
 
+def _make_reset_token(user_id):
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    return s.dumps(user_id, salt='reset')
+
+
+def _verify_reset_token(token, max_age=3600):
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        return s.loads(token, salt='reset', max_age=max_age), None
+    except SignatureExpired:
+        return None, 'Reset link has expired. Please request a new one.'
+    except BadSignature:
+        return None, 'Invalid reset link.'
+
+
 def _send_invite(user):
     from app.email import send_invite_email
     token = _make_invite_token(user.id)
@@ -244,6 +259,58 @@ def set_password_via_invite():
         return jsonify({'error': 'User not found.'}), 404
     if not u.invite_pending:
         return jsonify({'error': 'This invite has already been used.'}), 400
+    u.set_password(password)
+    db.session.commit()
+    return jsonify({'ok': True})
+
+
+# ── Password reset (public endpoints) ────────────────────────────────────────
+
+@api_bp.route('/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    data  = request.get_json(silent=True) or {}
+    email = (data.get('email') or '').strip().lower()
+    # Always return ok — never reveal whether email exists
+    if email:
+        u = User.query.filter_by(email=email).first()
+        if u:
+            try:
+                from app.email import send_reset_email
+                token     = _make_reset_token(u.id)
+                app_url   = os.environ.get('APP_URL', 'http://localhost:5173').rstrip('/')
+                reset_url = f"{app_url}/set-password?token={token}&type=reset"
+                send_reset_email(u.email, u.username, reset_url)
+            except Exception as e:
+                current_app.logger.error(f"Reset email failed for {email}: {e}")
+    return jsonify({'ok': True})
+
+
+@api_bp.route('/auth/reset-info/<token>', methods=['GET'])
+def reset_info(token):
+    user_id, err = _verify_reset_token(token)
+    if err:
+        return jsonify({'error': err}), 400
+    u = User.query.get(user_id)
+    if not u:
+        return jsonify({'error': 'User not found.'}), 404
+    return jsonify({'username': u.username, 'email': u.email})
+
+
+@api_bp.route('/auth/reset-password', methods=['POST'])
+def reset_password_via_token():
+    data     = request.get_json(silent=True) or {}
+    token    = data.get('token', '')
+    password = data.get('password', '')
+    if not token or not password:
+        return jsonify({'error': 'token and password are required'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    user_id, err = _verify_reset_token(token)
+    if err:
+        return jsonify({'error': err}), 400
+    u = User.query.get(user_id)
+    if not u:
+        return jsonify({'error': 'User not found.'}), 404
     u.set_password(password)
     db.session.commit()
     return jsonify({'ok': True})
