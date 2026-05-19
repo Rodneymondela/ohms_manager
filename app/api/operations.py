@@ -151,11 +151,29 @@ def _full_user_dict(u, ops_by_id=None):
         if op_obj:
             op = {'id': op_obj.id, 'operation_name': op_obj.operation_name, 'code': op_obj.code}
     return {
-        'id':           u.id,
-        'username':     u.username,
-        'email':        u.email,
-        'role':         u.role,
-        'is_admin':     u.role in ('admin', 'super_admin'),
-        'operation_id': u.operation_id,
-        'operation':    op,
+        'id':             u.id,
+        'username':       u.username,
+        'email':          u.email,
+        'role':           u.role,
+        'is_admin':       u.role in ('admin', 'super_admin'),
+        'operation_id':   u.operation_id,
+        'operation':      op,
+        'invite_pending': u.invite_pending,
     }
+
+
+@api_bp.route('/operations/users/<int:uid>/resend-invite', methods=['POST'])
+@login_required
+def resend_invite(uid):
+    err = _super_admin_required()
+    if err:
+        return err
+    u = User.query.get_or_404(uid)
+    if not u.invite_pending:
+        return jsonify({'error': 'User has already set their password.'}), 400
+    try:
+        from app.api.auth import _send_invite
+        _send_invite(u)
+    except Exception as e:
+        return jsonify({'error': f'Failed to send email: {e}'}), 500
+    return jsonify({'ok': True})

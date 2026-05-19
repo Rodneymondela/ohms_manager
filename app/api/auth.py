@@ -3,11 +3,40 @@ Authentication endpoints  —  /api/auth/*
 Uses Flask-Login session cookies (forwarded transparently by the Vite proxy).
 """
 
-from flask import request, jsonify
+import os
+from flask import request, jsonify, current_app
 from flask_login import login_user, logout_user, current_user, login_required
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from app.api import api_bp
 from app.models import User, Operation, ROLES
 from app import db
+
+
+def _make_invite_token(user_id):
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    return s.dumps(user_id, salt='invite')
+
+
+def _verify_invite_token(token, max_age=72 * 3600):
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'])
+    try:
+        return s.loads(token, salt='invite', max_age=max_age), None
+    except SignatureExpired:
+        return None, 'Invite link has expired. Ask your administrator to resend it.'
+    except BadSignature:
+        return None, 'Invalid invite link.'
+
+
+def _send_invite(user):
+    from app.email import send_invite_email
+    token = _make_invite_token(user.id)
+    app_url = os.environ.get('APP_URL', 'http://localhost:5173').rstrip('/')
+    invite_url = f"{app_url}/set-password?token={token}"
+    op_name = None
+    if user.operation_id:
+        op = Operation.query.get(user.operation_id)
+        op_name = op.operation_name if op else None
+    send_invite_email(user.email, user.username, invite_url, op_name)
 
 
 def _user_dict(u):
@@ -21,10 +50,11 @@ def _user_dict(u):
         'username':     u.username,
         'email':        u.email,
         'role':         u.role,
-        'is_admin':     u.role in ('admin', 'super_admin'),
+        'is_admin':       u.role in ('admin', 'super_admin'),
         'is_super_admin': u.role == 'super_admin',
-        'operation_id': u.operation_id,
-        'operation':    op,
+        'operation_id':   u.operation_id,
+        'operation':      op,
+        'invite_pending': u.invite_pending,
     }
 
 
@@ -49,6 +79,8 @@ def login():
         return jsonify({'error': 'email and password are required'}), 400
 
     user = User.query.filter_by(email=email).first()
+    if user and user.invite_pending:
+        return jsonify({'error': 'Please check your email and click the invite link to set your password before logging in.'}), 401
     if not user or not user.check_password(password):
         return jsonify({'error': 'Invalid email or password'}), 401
 
@@ -101,8 +133,8 @@ def create_user():
     password = data.get('password') or ''
     role     = data.get('role', 'viewer')
 
-    if not username or not email or not password:
-        return jsonify({'error': 'username, email and password are required'}), 400
+    if not username or not email:
+        return jsonify({'error': 'username and email are required'}), 400
     if role not in ROLES:
         return jsonify({'error': f'role must be one of: {", ".join(ROLES)}'}), 400
 
@@ -128,9 +160,19 @@ def create_user():
         is_admin=(role in ('admin', 'super_admin')),
         operation_id=op_id,
     )
-    u.set_password(password)
+    if password:
+        u.set_password(password)
+    else:
+        u.password_hash = 'INVITE_PENDING'
     db.session.add(u)
     db.session.commit()
+
+    if u.invite_pending:
+        try:
+            _send_invite(u)
+        except Exception as e:
+            current_app.logger.error(f"Invite email failed for user {u.id}: {e}")
+
     return jsonify(_user_dict(u)), 201
 
 
@@ -168,6 +210,43 @@ def update_user(uid):
 
     db.session.commit()
     return jsonify(_user_dict(u))
+
+
+# ── Invite / set-password (public endpoints, no login required) ───────────────
+
+@api_bp.route('/auth/invite-info/<token>', methods=['GET'])
+def invite_info(token):
+    user_id, err = _verify_invite_token(token)
+    if err:
+        return jsonify({'error': err}), 400
+    u = User.query.get(user_id)
+    if not u:
+        return jsonify({'error': 'User not found.'}), 404
+    if not u.invite_pending:
+        return jsonify({'error': 'This invite has already been used.'}), 400
+    return jsonify({'username': u.username, 'email': u.email})
+
+
+@api_bp.route('/auth/set-password', methods=['POST'])
+def set_password_via_invite():
+    data     = request.get_json(silent=True) or {}
+    token    = data.get('token', '')
+    password = data.get('password', '')
+    if not token or not password:
+        return jsonify({'error': 'token and password are required'}), 400
+    if len(password) < 8:
+        return jsonify({'error': 'Password must be at least 8 characters'}), 400
+    user_id, err = _verify_invite_token(token)
+    if err:
+        return jsonify({'error': err}), 400
+    u = User.query.get(user_id)
+    if not u:
+        return jsonify({'error': 'User not found.'}), 404
+    if not u.invite_pending:
+        return jsonify({'error': 'This invite has already been used.'}), 400
+    u.set_password(password)
+    db.session.commit()
+    return jsonify({'ok': True})
 
 
 @api_bp.route('/users/<int:uid>', methods=['DELETE'])

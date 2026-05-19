@@ -10,3 +10,5 @@ Flask-Cors==4.0.0
 gunicorn==21.2.0
 psycopg2-binary==2.9.9
 cloudinary==1.44.2
+sendgrid==6.11.0
+itsdangerous==2.1.2

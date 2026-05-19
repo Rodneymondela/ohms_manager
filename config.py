@@ -14,3 +14,7 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     REMEMBER_COOKIE_DURATION = timedelta(days=30)
 
+    SENDGRID_API_KEY    = os.environ.get('SENDGRID_API_KEY', '')
+    SENDGRID_FROM_EMAIL = os.environ.get('SENDGRID_FROM_EMAIL', 'noreply@rodmon.co.za')
+    APP_URL             = os.environ.get('APP_URL', 'http://localhost:5173')
+

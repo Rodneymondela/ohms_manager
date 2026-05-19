@@ -50,7 +50,13 @@ class User(UserMixin, db.Model):
     def set_password(self, password):
         self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
 
+    @property
+    def invite_pending(self):
+        return self.password_hash == 'INVITE_PENDING'
+
     def check_password(self, password):
+        if self.invite_pending:
+            return False
         return bcrypt.check_password_hash(self.password_hash, password)
 
 
