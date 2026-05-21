@@ -261,18 +261,81 @@ def list_heg_groups():
     return jsonify([f"{h.heg_number}: {h.job_title}" for h in hegs])
 
 
-@api_bp.route('/hegs', methods=['GET'])
-@login_required
-def list_hegs():
-    q = HEG.query
-    hegs = _scoped(q, HEG).order_by(HEG.heg_number).all()
-    return jsonify([{
+def _heg_dict(h):
+    return {
         'id':          h.id,
         'heg_number':  h.heg_number,
         'job_title':   h.job_title,
         'department':  h.department,
+        'risk_level':  h.risk_level,
+        'description': h.description or '',
         'occupations': h.occupations or [],
-    } for h in hegs])
+    }
+
+
+@api_bp.route('/hegs', methods=['GET'])
+@login_required
+def list_hegs():
+    hegs = _scoped(HEG.query, HEG).order_by(HEG.heg_number).all()
+    return jsonify([_heg_dict(h) for h in hegs])
+
+
+@api_bp.route('/hegs', methods=['POST'])
+@login_required
+def create_heg():
+    data = request.get_json(silent=True) or {}
+    heg_number = (data.get('heg_number') or '').strip().upper()
+    job_title  = (data.get('job_title')  or '').strip()
+    department = (data.get('department') or '').strip()
+    if not heg_number or not job_title or not department:
+        return _err('heg_number, job_title and department are required')
+    if HEG.query.filter_by(heg_number=heg_number, operation_id=_op_id()).first():
+        return _err(f'HEG number "{heg_number}" already exists in this operation')
+    h = HEG(
+        heg_number   = heg_number,
+        job_title    = job_title,
+        department   = department,
+        risk_level   = data.get('risk_level', 'Moderate'),
+        description  = data.get('description') or None,
+        occupations  = data.get('occupations') or [],
+        operation_id = _op_id(),
+    )
+    db.session.add(h)
+    db.session.commit()
+    return jsonify(_heg_dict(h)), 201
+
+
+@api_bp.route('/hegs/<int:hid>', methods=['PUT'])
+@login_required
+def update_heg(hid):
+    h    = HEG.query.get_or_404(hid)
+    err  = _owns(h)
+    if err: return err
+    data = request.get_json(silent=True) or {}
+    if 'heg_number' in data:
+        new_num = data['heg_number'].strip().upper()
+        clash = HEG.query.filter_by(heg_number=new_num, operation_id=_op_id()).first()
+        if clash and clash.id != hid:
+            return _err(f'HEG number "{new_num}" already exists')
+        h.heg_number = new_num
+    if 'job_title'   in data: h.job_title   = data['job_title'].strip()
+    if 'department'  in data: h.department  = data['department'].strip()
+    if 'risk_level'  in data: h.risk_level  = data['risk_level']
+    if 'description' in data: h.description = data['description'] or None
+    if 'occupations' in data: h.occupations = data['occupations'] or []
+    db.session.commit()
+    return jsonify(_heg_dict(h))
+
+
+@api_bp.route('/hegs/<int:hid>', methods=['DELETE'])
+@login_required
+def delete_heg(hid):
+    h   = HEG.query.get_or_404(hid)
+    err = _owns(h)
+    if err: return err
+    db.session.delete(h)
+    db.session.commit()
+    return jsonify({'deleted': hid})
 
 
 # ══════════════════════════════════════════════════════════════════════════════
