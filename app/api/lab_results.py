@@ -140,11 +140,13 @@ def sync_lab_results_from_field_sheets():
     if op is not None:
         q = q.filter(FieldSheet.operation_id == op)
 
-    created = 0
+    sheets = q.all()
+    created = skipped = 0
     try:
-        for fs in q.all():
+        for fs in sheets:
             key = (fs.survey_number, str(fs.sampling_date), fs.activity_area, fs.occupation_group)
             if key in existing_keys:
+                skipped += 1
                 continue
             quarter = fs.sampling_quarter
             if not quarter and fs.sampling_date:
@@ -169,7 +171,7 @@ def sync_lab_results_from_field_sheets():
         db.session.rollback()
         return jsonify({'error': str(exc)}), 500
 
-    return jsonify({'created': created})
+    return jsonify({'created': created, 'skipped': skipped, 'eligible': len(sheets)})
 
 
 @api_bp.route('/lab-results/dmpr-data', methods=['GET'])
