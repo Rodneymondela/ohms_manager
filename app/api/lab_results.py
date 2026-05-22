@@ -114,6 +114,56 @@ def delete_lab_result(rid):
     return jsonify({'deleted': rid})
 
 
+@api_bp.route('/lab-results/sync-from-field-sheets', methods=['POST'])
+@login_required
+def sync_lab_results_from_field_sheets():
+    """
+    Create draft LabResult rows from FieldSheets that have activity_area +
+    occupation_group set (airborne sampling).  Skips sheets already linked.
+    """
+    from app.schedules.models import FieldSheet
+
+    op = _op_id()
+
+    existing_fsids = {
+        r[0] for r in db.session.query(LabResult.field_sheet_id)
+        .filter(LabResult.field_sheet_id.isnot(None)).all()
+    }
+
+    q = FieldSheet.query.filter(
+        FieldSheet.activity_area.isnot(None),
+        FieldSheet.occupation_group.isnot(None),
+    )
+    if op is not None:
+        q = q.filter(FieldSheet.operation_id == op)
+
+    created = 0
+    for fs in q.all():
+        if fs.id in existing_fsids:
+            continue
+        quarter = fs.sampling_quarter
+        if not quarter and fs.sampling_date:
+            m = fs.sampling_date.month
+            quarter = f'Q{(m - 1) // 3 + 1}'
+
+        lr = LabResult(
+            operation_id      = current_user.operation_id,
+            field_sheet_id    = fs.id,
+            sampling_date     = fs.sampling_date,
+            sampling_quarter  = quarter,
+            activity_area     = fs.activity_area,
+            occupation        = fs.occupation_group,
+            sampling_duration = fs.air_run_time,
+            survey_ref        = fs.survey_number,
+        )
+        db.session.add(lr)
+        created += 1
+
+    if created:
+        db.session.commit()
+    return jsonify({'created': created})
+
+
 @api_bp.route('/lab-results/dmpr-data', methods=['GET'])
 @login_required
 def lab_results_dmpr_data():
