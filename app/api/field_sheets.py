@@ -63,7 +63,7 @@ def _apply(sheet, data):
         'air_pump_serial', 'air_filter_number', 'air_method',
         'air_time_on', 'air_time_off',
         'wearer_signature', 'sampled_by', 'sampled_designation', 'verified_by',
-        'activity_area', 'occupation_group',
+        'activity_area', 'occupation_group', 'sampling_type',
     ):
         if key in data:
             setattr(sheet, key, data[key] or None)

@@ -11,6 +11,7 @@ from sqlalchemy import text
 def _migrate_field_sheet(db):
     """Add new columns to existing tables if they don't already exist."""
     migrations = [
+        ('field_sheet', 'sampling_type',    'VARCHAR(20)'),
         ('field_sheet', 'activity_area',    'VARCHAR(120)'),
         ('field_sheet', 'occupation_group', 'VARCHAR(120)'),
         ('field_sheet', 'result_mn_twa',    'FLOAT'),

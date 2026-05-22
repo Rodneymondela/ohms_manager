@@ -404,6 +404,9 @@ class FieldSheet(db.Model):
     sampled_date         = db.Column(db.Date,        nullable=True)
     verified_by          = db.Column(db.String(120), nullable=True)
 
+    # ── Sampling type ─────────────────────────────────────────────────────────
+    sampling_type        = db.Column(db.String(20), nullable=True)    # noise / dust / both
+
     # ── DMPR classification ───────────────────────────────────────────────────
     activity_area        = db.Column(db.String(120), nullable=True)   # DMPR area tab name
     occupation_group     = db.Column(db.String(120), nullable=True)   # occupation group in HEG
@@ -499,6 +502,8 @@ class FieldSheet(db.Model):
             'sampled_designation':  self.sampled_designation,
             'sampled_date':         self.sampled_date.isoformat() if self.sampled_date else None,
             'verified_by':          self.verified_by,
+            # Sampling type
+            'sampling_type':        self.sampling_type or 'both',
             # DMPR classification
             'activity_area':        self.activity_area,
             'occupation_group':     self.occupation_group,
