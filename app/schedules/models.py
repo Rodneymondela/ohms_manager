@@ -529,12 +529,27 @@ class LabResult(db.Model):
     sampling_quarter = db.Column(db.String(10),  nullable=True)   # Q1 / Q2 / Q3 / Q4
     activity_area    = db.Column(db.String(120), nullable=False)
     occupation       = db.Column(db.String(120), nullable=False)
-    result_mn_twa    = db.Column(db.Float,       nullable=True)   # Manganese TWA mg/m³ (code 378)
-    result_si_twa    = db.Column(db.Float,       nullable=True)   # Silica TWA mg/m³    (code 522)
-    result_pnoc_twa  = db.Column(db.Float,       nullable=True)   # PNOC TWA mg/m³      (code 459)
-    survey_ref       = db.Column(db.String(80),  nullable=True)   # field sheet survey number
-    lab_report_ref   = db.Column(db.String(80),  nullable=True)   # lab report reference
-    operation_id     = db.Column(db.Integer, db.ForeignKey('operation.id'), nullable=True)
+    result_mn_twa     = db.Column(db.Float,   nullable=True)   # Manganese TWA mg/m³ (code 378)
+    result_si_twa     = db.Column(db.Float,   nullable=True)   # Silica TWA mg/m³    (code 522)
+    result_pnoc_twa   = db.Column(db.Float,   nullable=True)   # PNOC TWA mg/m³      (code 459)
+    shift_duration    = db.Column(db.Float,   nullable=True)   # standard shift length in hours (8, 9, 10, 12)
+    sampling_duration = db.Column(db.Integer, nullable=True)   # actual pump run time in minutes
+    survey_ref        = db.Column(db.String(80), nullable=True)
+    lab_report_ref    = db.Column(db.String(80), nullable=True)
+    operation_id      = db.Column(db.Integer, db.ForeignKey('operation.id'), nullable=True)
+
+    @property
+    def validity_pct(self):
+        if self.shift_duration and self.sampling_duration is not None:
+            return (self.sampling_duration / (self.shift_duration * 60)) * 100
+        return None
+
+    @property
+    def is_valid_sample(self):
+        pct = self.validity_pct
+        if pct is None:
+            return True   # no duration data — don't auto-reject
+        return pct >= 80
 
     def to_dict(self):
         return {
@@ -544,11 +559,15 @@ class LabResult(db.Model):
             'sampling_quarter': self.sampling_quarter,
             'activity_area':    self.activity_area,
             'occupation':       self.occupation,
-            'result_mn_twa':    self.result_mn_twa,
-            'result_si_twa':    self.result_si_twa,
-            'result_pnoc_twa':  self.result_pnoc_twa,
-            'survey_ref':       self.survey_ref,
-            'lab_report_ref':   self.lab_report_ref,
+            'result_mn_twa':     self.result_mn_twa,
+            'result_si_twa':     self.result_si_twa,
+            'result_pnoc_twa':   self.result_pnoc_twa,
+            'shift_duration':    self.shift_duration,
+            'sampling_duration': self.sampling_duration,
+            'validity_pct':      round(self.validity_pct, 1) if self.validity_pct is not None else None,
+            'is_valid':          self.is_valid_sample,
+            'survey_ref':        self.survey_ref,
+            'lab_report_ref':    self.lab_report_ref,
         }
 
     def __repr__(self):

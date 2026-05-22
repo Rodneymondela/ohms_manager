@@ -9,18 +9,20 @@ from sqlalchemy import text
 
 
 def _migrate_field_sheet(db):
-    """Add new columns to field_sheet if they don't already exist."""
-    new_cols = [
-        ('activity_area',    'VARCHAR(120)'),
-        ('occupation_group', 'VARCHAR(120)'),
-        ('result_mn_twa',    'FLOAT'),
-        ('result_si_twa',    'FLOAT'),
-        ('result_pnoc_twa',  'FLOAT'),
+    """Add new columns to existing tables if they don't already exist."""
+    migrations = [
+        ('field_sheet', 'activity_area',    'VARCHAR(120)'),
+        ('field_sheet', 'occupation_group', 'VARCHAR(120)'),
+        ('field_sheet', 'result_mn_twa',    'FLOAT'),
+        ('field_sheet', 'result_si_twa',    'FLOAT'),
+        ('field_sheet', 'result_pnoc_twa',  'FLOAT'),
+        ('lab_result',  'shift_duration',    'FLOAT'),
+        ('lab_result',  'sampling_duration', 'INTEGER'),
     ]
-    for col, col_type in new_cols:
+    for table, col, col_type in migrations:
         try:
             db.session.execute(
-                text(f'ALTER TABLE field_sheet ADD COLUMN IF NOT EXISTS {col} {col_type}')
+                text(f'ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {col} {col_type}')
             )
             db.session.commit()
         except Exception:

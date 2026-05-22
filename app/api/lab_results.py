@@ -42,7 +42,7 @@ def _apply(record, data):
         if key in data:
             setattr(record, key, data[key] or None)
 
-    for key in ('result_mn_twa', 'result_si_twa', 'result_pnoc_twa'):
+    for key in ('result_mn_twa', 'result_si_twa', 'result_pnoc_twa', 'shift_duration'):
         if key in data:
             v = data[key]
             if v not in (None, ''):
@@ -52,6 +52,16 @@ def _apply(record, data):
                     pass
             else:
                 setattr(record, key, None)
+
+    if 'sampling_duration' in data:
+        v = data['sampling_duration']
+        if v not in (None, ''):
+            try:
+                record.sampling_duration = int(v)
+            except (ValueError, TypeError):
+                pass
+        else:
+            record.sampling_duration = None
 
     if 'sampling_date' in data:
         record.sampling_date = _parse_date(data['sampling_date'])
@@ -125,9 +135,13 @@ def lab_results_dmpr_data():
 
     q_map = {'Q1': 'q1', 'Q2': 'q2', 'Q3': 'q3', 'Q4': 'q4'}
 
+    rejected = 0
     # acc: area → occ → q_key → code → [values]
     acc = {}
     for r in records:
+        if not r.is_valid_sample:
+            rejected += 1
+            continue
         area  = (r.activity_area or '').strip()
         occ   = (r.occupation or '').strip()
         q_key = q_map.get((r.sampling_quarter or '').strip().upper())
@@ -152,4 +166,4 @@ def lab_results_dmpr_data():
             occ_list.append({'name': occ_name, 'pollutants': poll_map})
         result.append({'name': area_name, 'occupations': occ_list})
 
-    return jsonify({'areas': result, 'rowCount': len(records)})
+    return jsonify({'areas': result, 'rowCount': len(records), 'rejectedCount': rejected})
