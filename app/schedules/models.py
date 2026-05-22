@@ -514,3 +514,42 @@ class FieldSheet(db.Model):
 
     def __repr__(self):
         return f"<FieldSheet id:{self.id} emp:{self.employee_name} status:{self.status}>"
+
+
+# ---------------------------------------------------------------------------
+# LabResult  (master sheet — lab results entered when report received)
+# ---------------------------------------------------------------------------
+
+class LabResult(db.Model):
+    __tablename__ = 'lab_result'
+
+    id               = db.Column(db.Integer, primary_key=True)
+    created_at       = db.Column(db.DateTime, default=datetime.utcnow)
+    sampling_date    = db.Column(db.Date,        nullable=True)
+    sampling_quarter = db.Column(db.String(10),  nullable=True)   # Q1 / Q2 / Q3 / Q4
+    activity_area    = db.Column(db.String(120), nullable=False)
+    occupation       = db.Column(db.String(120), nullable=False)
+    result_mn_twa    = db.Column(db.Float,       nullable=True)   # Manganese TWA mg/m³ (code 378)
+    result_si_twa    = db.Column(db.Float,       nullable=True)   # Silica TWA mg/m³    (code 522)
+    result_pnoc_twa  = db.Column(db.Float,       nullable=True)   # PNOC TWA mg/m³      (code 459)
+    survey_ref       = db.Column(db.String(80),  nullable=True)   # field sheet survey number
+    lab_report_ref   = db.Column(db.String(80),  nullable=True)   # lab report reference
+    operation_id     = db.Column(db.Integer, db.ForeignKey('operation.id'), nullable=True)
+
+    def to_dict(self):
+        return {
+            'id':               self.id,
+            'created_at':       self.created_at.isoformat() if self.created_at else None,
+            'sampling_date':    self.sampling_date.isoformat() if self.sampling_date else None,
+            'sampling_quarter': self.sampling_quarter,
+            'activity_area':    self.activity_area,
+            'occupation':       self.occupation,
+            'result_mn_twa':    self.result_mn_twa,
+            'result_si_twa':    self.result_si_twa,
+            'result_pnoc_twa':  self.result_pnoc_twa,
+            'survey_ref':       self.survey_ref,
+            'lab_report_ref':   self.lab_report_ref,
+        }
+
+    def __repr__(self):
+        return f"<LabResult {self.activity_area} / {self.occupation} {self.sampling_quarter}>"

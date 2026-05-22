@@ -83,7 +83,7 @@ def create_app():
 
     # Import all models so db.create_all() picks up new tables
     from app.models import Operation, User  # noqa
-    from app.schedules.models import ExposureReading, EmployeeExposure, MedicalRecord, FieldSheet  # noqa
+    from app.schedules.models import ExposureReading, EmployeeExposure, MedicalRecord, FieldSheet, LabResult  # noqa
     from app.employees.models import Employee  # noqa
 
     with app.app_context():
