@@ -536,7 +536,6 @@ class LabResult(db.Model):
     sampling_duration = db.Column(db.Integer, nullable=True)   # actual pump run time in minutes
     survey_ref        = db.Column(db.String(80), nullable=True)
     lab_report_ref    = db.Column(db.String(80), nullable=True)
-    field_sheet_id    = db.Column(db.Integer, db.ForeignKey('field_sheet.id'), nullable=True)
     operation_id      = db.Column(db.Integer, db.ForeignKey('operation.id'), nullable=True)
 
     @property
@@ -569,7 +568,6 @@ class LabResult(db.Model):
             'is_valid':          self.is_valid_sample,
             'survey_ref':        self.survey_ref,
             'lab_report_ref':    self.lab_report_ref,
-            'field_sheet_id':    self.field_sheet_id,
         }
 
     def __repr__(self):

@@ -125,10 +125,13 @@ def sync_lab_results_from_field_sheets():
 
     op = _op_id()
 
-    existing_fsids = {
-        r[0] for r in db.session.query(LabResult.field_sheet_id)
-        .filter(LabResult.field_sheet_id.isnot(None)).all()
-    }
+    # Build a set of already-imported survey refs + dates to deduplicate
+    # (avoids dependency on field_sheet_id column existing in DB)
+    existing_keys = set()
+    for r in LabResult.query.with_entities(
+            LabResult.survey_ref, LabResult.sampling_date, LabResult.activity_area, LabResult.occupation
+    ).all():
+        existing_keys.add((r.survey_ref, str(r.sampling_date), r.activity_area, r.occupation))
 
     q = FieldSheet.query.filter(
         FieldSheet.activity_area.isnot(None),
@@ -138,29 +141,34 @@ def sync_lab_results_from_field_sheets():
         q = q.filter(FieldSheet.operation_id == op)
 
     created = 0
-    for fs in q.all():
-        if fs.id in existing_fsids:
-            continue
-        quarter = fs.sampling_quarter
-        if not quarter and fs.sampling_date:
-            m = fs.sampling_date.month
-            quarter = f'Q{(m - 1) // 3 + 1}'
+    try:
+        for fs in q.all():
+            key = (fs.survey_number, str(fs.sampling_date), fs.activity_area, fs.occupation_group)
+            if key in existing_keys:
+                continue
+            quarter = fs.sampling_quarter
+            if not quarter and fs.sampling_date:
+                m = fs.sampling_date.month
+                quarter = f'Q{(m - 1) // 3 + 1}'
 
-        lr = LabResult(
-            operation_id      = current_user.operation_id,
-            field_sheet_id    = fs.id,
-            sampling_date     = fs.sampling_date,
-            sampling_quarter  = quarter,
-            activity_area     = fs.activity_area,
-            occupation        = fs.occupation_group,
-            sampling_duration = fs.air_run_time,
-            survey_ref        = fs.survey_number,
-        )
-        db.session.add(lr)
-        created += 1
+            lr = LabResult(
+                operation_id      = current_user.operation_id,
+                sampling_date     = fs.sampling_date,
+                sampling_quarter  = quarter,
+                activity_area     = fs.activity_area,
+                occupation        = fs.occupation_group,
+                sampling_duration = fs.air_run_time,
+                survey_ref        = fs.survey_number,
+            )
+            db.session.add(lr)
+            created += 1
 
-    if created:
-        db.session.commit()
+        if created:
+            db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({'error': str(exc)}), 500
+
     return jsonify({'created': created})
 
 

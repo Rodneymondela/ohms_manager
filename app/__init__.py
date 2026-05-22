@@ -18,7 +18,6 @@ def _migrate_field_sheet(db):
         ('field_sheet', 'result_pnoc_twa',  'FLOAT'),
         ('lab_result',  'shift_duration',    'FLOAT'),
         ('lab_result',  'sampling_duration', 'INTEGER'),
-        ('lab_result',  'field_sheet_id',    'INTEGER'),
     ]
     for table, col, col_type in migrations:
         try:
