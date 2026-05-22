@@ -63,6 +63,7 @@ def _apply(sheet, data):
         'air_pump_serial', 'air_filter_number', 'air_method',
         'air_time_on', 'air_time_off',
         'wearer_signature', 'sampled_by', 'sampled_designation', 'verified_by',
+        'activity_area', 'occupation_group',
     ):
         if key in data:
             setattr(sheet, key, data[key] or None)
@@ -82,12 +83,15 @@ def _apply(sheet, data):
             except (ValueError, TypeError):
                 pass
 
-    for key in ('noise_laeq', 'air_pre_cal_flow', 'air_post_cal_flow'):
+    for key in ('noise_laeq', 'air_pre_cal_flow', 'air_post_cal_flow',
+                'result_mn_twa', 'result_si_twa', 'result_pnoc_twa'):
         if key in data and data[key] not in (None, ''):
             try:
                 setattr(sheet, key, float(data[key]))
             except (ValueError, TypeError):
                 pass
+        elif key in data and data[key] in (None, ''):
+            setattr(sheet, key, None)
 
     for key in ('sampling_date', 'noise_cal_date', 'air_cal_date', 'sampled_date'):
         if key in data:
@@ -203,6 +207,59 @@ def upload_scan(sid):
     sheet.scan_url_external = result.get('secure_url')
     db.session.commit()
     return jsonify(sheet.to_dict())
+
+
+@api_bp.route('/field-sheets/dmpr-data', methods=['GET'])
+@login_required
+def field_sheets_dmpr_data():
+    """
+    Aggregate field sheet lab results into the DMPR quarterly structure.
+    Groups by activity_area → occupation_group → sampling_quarter → pollutant.
+    Returns averaged TWA values for each combination.
+    """
+    q = FieldSheet.query
+    op = _op_id()
+    if op is not None:
+        q = q.filter(FieldSheet.operation_id == op)
+
+    sheets = q.filter(
+        FieldSheet.activity_area.isnot(None),
+        FieldSheet.occupation_group.isnot(None),
+        FieldSheet.sampling_quarter.isnot(None),
+    ).all()
+
+    # quarter label → lowercase key
+    q_map = {'Q1': 'q1', 'Q2': 'q2', 'Q3': 'q3', 'Q4': 'q4'}
+
+    # acc: area → occ → q_key → code → [values]
+    acc = {}
+    for s in sheets:
+        area = (s.activity_area or '').strip()
+        occ  = (s.occupation_group or '').strip()
+        q_key = q_map.get((s.sampling_quarter or '').strip().upper())
+        if not area or not occ or not q_key:
+            continue
+
+        acc.setdefault(area, {}).setdefault(occ, {}).setdefault(q_key, {})
+        for code, val in [('378', s.result_mn_twa), ('522', s.result_si_twa), ('459', s.result_pnoc_twa)]:
+            if val is not None and val > 0:
+                acc[area][occ][q_key].setdefault(code, []).append(val)
+
+    result = []
+    for area_name, occs in acc.items():
+        occ_list = []
+        for occ_name, quarters in occs.items():
+            poll_map = {}
+            for q_key, codes in quarters.items():
+                for code, vals in codes.items():
+                    if code not in poll_map:
+                        poll_map[code] = {'q1': '', 'q2': '', 'q3': '', 'q4': ''}
+                    avg = sum(vals) / len(vals)
+                    poll_map[code][q_key] = f'{avg:.4f}'
+            occ_list.append({'name': occ_name, 'pollutants': poll_map})
+        result.append({'name': area_name, 'occupations': occ_list})
+
+    return jsonify({'areas': result, 'rowCount': len(sheets)})
 
 
 @api_bp.route('/field-sheets/<int:sid>/scan', methods=['GET'])

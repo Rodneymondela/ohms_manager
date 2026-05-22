@@ -5,6 +5,26 @@ from flask_login import LoginManager
 from flask_bcrypt import Bcrypt
 from flask_wtf import CSRFProtect
 from flask_cors import CORS
+from sqlalchemy import text
+
+
+def _migrate_field_sheet(db):
+    """Add new columns to field_sheet if they don't already exist."""
+    new_cols = [
+        ('activity_area',    'VARCHAR(120)'),
+        ('occupation_group', 'VARCHAR(120)'),
+        ('result_mn_twa',    'FLOAT'),
+        ('result_si_twa',    'FLOAT'),
+        ('result_pnoc_twa',  'FLOAT'),
+    ]
+    for col, col_type in new_cols:
+        try:
+            db.session.execute(
+                text(f'ALTER TABLE field_sheet ADD COLUMN IF NOT EXISTS {col} {col_type}')
+            )
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 db = SQLAlchemy()
 login_manager = LoginManager()
@@ -68,6 +88,7 @@ def create_app():
 
     with app.app_context():
         db.create_all()
+        _migrate_field_sheet(db)
 
     @app.route('/', defaults={'path': ''})
     @app.route('/<path:path>')

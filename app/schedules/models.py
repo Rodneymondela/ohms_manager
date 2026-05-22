@@ -404,6 +404,15 @@ class FieldSheet(db.Model):
     sampled_date         = db.Column(db.Date,        nullable=True)
     verified_by          = db.Column(db.String(120), nullable=True)
 
+    # ── DMPR classification ───────────────────────────────────────────────────
+    activity_area        = db.Column(db.String(120), nullable=True)   # DMPR area tab name
+    occupation_group     = db.Column(db.String(120), nullable=True)   # occupation group in HEG
+
+    # ── Lab results (returned by lab after analysis) ──────────────────────────
+    result_mn_twa        = db.Column(db.Float,       nullable=True)   # Manganese TWA mg/m³ (code 378)
+    result_si_twa        = db.Column(db.Float,       nullable=True)   # Silica TWA mg/m³    (code 522)
+    result_pnoc_twa      = db.Column(db.Float,       nullable=True)   # PNOC TWA mg/m³      (code 459)
+
     # ── Scanned copy (stored in Cloudinary) ──────────────────────────────────
     scan_filename        = db.Column(db.String(255), nullable=True)
     scan_url_external    = db.Column(db.Text,        nullable=True)  # Cloudinary CDN URL
@@ -490,6 +499,13 @@ class FieldSheet(db.Model):
             'sampled_designation':  self.sampled_designation,
             'sampled_date':         self.sampled_date.isoformat() if self.sampled_date else None,
             'verified_by':          self.verified_by,
+            # DMPR classification
+            'activity_area':        self.activity_area,
+            'occupation_group':     self.occupation_group,
+            # Lab results
+            'result_mn_twa':        self.result_mn_twa,
+            'result_si_twa':        self.result_si_twa,
+            'result_pnoc_twa':      self.result_pnoc_twa,
             # Scan
             'scan_filename':        self.scan_filename,
             'scan_url':             f'/api/field-sheets/{self.id}/scan' if self.scan_filename else None,
