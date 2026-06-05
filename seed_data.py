@@ -124,6 +124,7 @@ def seed():
                 username = 'Rodney',
                 email    = 'rodney@rodmon.co.za',
                 is_admin = True,
+                role     = 'super_admin',
             )
             admin.set_password('Admin@1234')
             db.session.add(admin)
